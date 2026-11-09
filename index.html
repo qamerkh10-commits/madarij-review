@@ -39,6 +39,33 @@ svg.i { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-widt
 .nav button.on { background: var(--teal); color: #fff; }
 .nav .count { margin-inline-start: auto; background: rgba(255,255,255,.18); color: #fff; font-size: 12px; border-radius: 99px; padding: 0 8px; min-width: 22px; text-align: center; }
 .nav .count.alert { background: #e0574b; }
+.nav .sec { font-size: 11px; font-weight: 700; color: #7f97a6; padding: 14px 12px 4px; letter-spacing: .3px; }
+.nav .sec:first-child { padding-top: 2px; }
+.nav .pdot { width: 11px; height: 11px; border-radius: 4px; background: var(--pc); flex: none; margin: 0 4px; }
+.nav button.proj.on { background: rgba(255,255,255,.12); box-shadow: inset -3px 0 0 var(--pc); }
+.pchip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 99px; background: #fff; border: 1px solid var(--line); color: var(--navy); white-space: nowrap; }
+.pchip::before { content: ''; width: 8px; height: 8px; border-radius: 3px; background: var(--pc); }
+.pcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.pcard { text-align: right; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); padding: 0; cursor: pointer; overflow: hidden; display: flex; flex-direction: column; }
+.pcard:hover { transform: translateY(-2px); }
+.pcard .band { height: 6px; background: var(--pc); }
+.pcard .ph { display: flex; align-items: center; gap: 10px; padding: 14px 16px 8px; }
+.pcard .ph .ico { width: 38px; height: 38px; border-radius: 10px; background: var(--pc); color: #fff; display: grid; place-items: center; }
+.pcard .ph b { font-size: 17px; color: var(--navy); display: block; }
+.pcard .ph span { font-size: 12px; color: var(--muted); }
+.pcard .pst { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 6px 16px 12px; }
+.pcard .pst div { background: var(--paper); border-radius: 9px; padding: 6px 4px; text-align: center; }
+.pcard .pst b { display: block; font-size: 19px; color: var(--navy); line-height: 1.2; }
+.pcard .pst span { font-size: 11px; color: var(--muted); }
+.pcard .pf { border-top: 1px solid var(--line-2); padding: 10px 16px; font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; margin-top: auto; }
+.ptog { border: 1px solid var(--line); background: #fff; border-radius: 99px; padding: 2px 9px; font-size: 12px; cursor: pointer; margin: 2px; color: var(--muted); }
+.ptog.on { background: var(--pc); border-color: var(--pc); color: #fff; }
+.prow { display: grid; grid-template-columns: 1.4fr 1fr 56px 2.4fr 60px; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line-2); }
+.prow input[type=color] { width: 46px; height: 36px; padding: 2px; border-radius: 8px; border: 1px solid #d9cfba; background: #fff; }
+.prow .dd { display: flex; flex-wrap: wrap; gap: 4px; }
+.prow .dd label span { padding: 4px 8px; font-size: 12px; border-radius: 8px; }
+.prow.head { font-size: 12px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--line); }
+.scope { display: inline-flex; align-items: center; gap: 6px; }
 .me { padding: 14px; border-top: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: 10px; }
 .me .avatar { background: var(--navy-3); color: #fff; }
 .me b { display: block; color: #fff; font-size: 14px; line-height: 1.3; }
@@ -269,6 +296,9 @@ table.tbl { width: 100%; border-collapse: collapse; }
   .tbl.stack td.ttl { grid-column: 1; }
   .tbl.stack td.stc { grid-column: 2; grid-row: 1; }
   .tbl.stack td.sub { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+  .prow { grid-template-columns: 1fr 1fr; }
+  .prow.head { display: none; }
+  .prow .dd { grid-column: 1 / -1; }
   .scroll-x { overflow-x: auto; }
   .toasts { left: 12px; right: 12px; }
 }
@@ -325,6 +355,7 @@ var STORE = 'madarij-review-v2';
 var S = { api: '', session: '', bot: '', name: '' };
 var D = null;                       // بيانات السيرفر
 var PAGE = '';
+var PROJ = '';                      // المشروع المفتوح ('' = كل المشاريع)
 var F = { q: '', st: 'all', rev: '' };
 var DRAFT = 'madarij-review-draft-v2';
 
@@ -349,6 +380,8 @@ var IC = {
   x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
   cal: '<rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>',
   plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  grid: '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
+  folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
   copy: '<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
 };
 function icon(n) { return '<svg class="i" viewBox="0 0 24 24">' + IC[n] + '</svg>'; }
@@ -425,7 +458,7 @@ function refresh(silent) {
     D = d; S.bot = d.bot || S.bot; S.name = d.me.name; save(); saveCache();
     var ae = document.activeElement;
     if (silent && D && ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName) && $('view').contains(ae)) return;  // ما نقاطعش اللي بيكتب
-    if (!PAGE || !allowed(PAGE)) PAGE = d.me.perms.view_all ? 'dash' : 'mine';
+    if (!PAGE || !allowed(PAGE)) PAGE = (d.me.isOwner || d.me.perms.view_all) ? 'home' : 'mine';
     render();
     if (!silent) {}
   }).catch(function (e) { syncing(false); if (S.session) toast(e.message, true); });
@@ -433,51 +466,112 @@ function refresh(silent) {
 
 // ================= الصفحات =================
 var PAGES = [
-  { k: 'dash', t: 'لوحة التحكم', i: 'home', ok: function () { return can('view_all'); } },
+  { k: 'home', t: 'كل المشاريع', i: 'grid', ok: function () { return can('view_all'); } },
+  { k: 'dash', t: 'لوحة التحكم', i: 'home', scoped: 1, ok: function () { return can('view_all'); } },
+  { k: 'lectures', t: 'المراجعات', i: 'book', scoped: 1, ok: function () { return can('view_all'); } },
+  { k: 'send', t: 'إرسال دفعة', i: 'send', scoped: 1, ok: function () { return can('send'); } },
+  { k: 'reviewers', t: 'المراجعون', i: 'users', scoped: 1, ok: function () { return can('view_all'); } },
+  { k: 'log', t: 'سجل النشاط', i: 'clock', scoped: 1, ok: function () { return can('view_all'); } },
   { k: 'mine', t: 'مهامي', i: 'check', ok: function () { return true; } },
-  { k: 'lectures', t: 'المحاضرات', i: 'book', ok: function () { return can('view_all'); } },
-  { k: 'send', t: 'إرسال دفعة', i: 'send', ok: function () { return can('send'); } },
-  { k: 'reviewers', t: 'المراجعون', i: 'users', ok: function () { return can('view_all'); } },
   { k: 'team', t: 'الفريق والصلاحيات', i: 'shield', ok: function () { return can('team'); } },
-  { k: 'log', t: 'سجل النشاط', i: 'clock', ok: function () { return can('view_all'); } },
-  { k: 'settings', t: 'الإعدادات', i: 'sliders', ok: function () { return can('settings'); } },
+  { k: 'settings', t: 'الإعدادات والمشاريع', i: 'sliders', ok: function () { return can('settings'); } },
 ];
 function allowed(k) { var p = PAGES.filter(function (x) { return x.k === k; })[0]; return p && p.ok(); }
 function mine() { return D.lectures.filter(function (l) { return l.mine; }); }
 
+// ---------- المشاريع ----------
+function projs() { return (D.projects || []).filter(function (p) { return p.mine && p.active; }); }
+function projOf(name) { return (D.projects || []).filter(function (p) { return p.name === name; })[0] || { name: name || '—', item: 'محاضرة', color: '#2E8B85', nextWorkDay: D.nextWorkDay, defaultDue: D.defaultDue }; }
+function scoped() { return PROJ ? D.lectures.filter(function (l) { return l.project === PROJ; }) : D.lectures; }
+function pchip(name) { return '<span class="pchip" style="--pc:' + esc(projOf(name).color) + '">' + esc(name) + '</span>'; }
+function setProj(name) { PROJ = name || ''; S.proj = PROJ; save(); }
+
 function render() {
   if (!D) return;
+  if (PROJ && !projs().some(function (p) { return p.name === PROJ; })) setProj('');
   var openMine = mine().filter(isOpen).length;
-  var lateAll = D.lectures.filter(isLate).length;
-  $('nav').innerHTML = PAGES.filter(function (p) { return p.ok(); }).map(function (p) {
-    var c = p.k === 'mine' && openMine ? '<span class="count">' + n(openMine) + '</span>'
-      : p.k === 'lectures' && lateAll ? '<span class="count alert">' + n(lateAll) + '</span>' : '';
-    return '<button class="' + (p.k === PAGE ? 'on' : '') + '" data-act="go" data-k="' + p.k + '">' + icon(p.i) + '<span>' + p.t + '</span>' + c + '</button>';
+  var page = PAGES.filter(function (p) { return p.k === PAGE; })[0];
+  var btn = function (p, extra) {
+    return '<button class="' + (p.k === PAGE ? 'on' : '') + '" data-act="go" data-k="' + p.k + '">' + icon(p.i) + '<span>' + p.t + '</span>' + (extra || '') + '</button>';
+  };
+  var html = '';
+  if (can('view_all')) {
+    html += '<div class="sec">المشاريع</div>' + btn(PAGES[0]);
+    html += projs().map(function (p) {
+      var L = D.lectures.filter(function (l) { return l.project === p.name; });
+      var late = L.filter(isLate).length, open = L.filter(isOpen).length;
+      var c = late ? '<span class="count alert">' + n(late) + '</span>' : open ? '<span class="count">' + n(open) + '</span>' : '';
+      return '<button class="proj' + (PROJ === p.name && page && page.scoped ? ' on' : '') + '" style="--pc:' + esc(p.color) + '" data-act="proj" data-p="' + esc(p.name) + '"><span class="pdot"></span><span>' + esc(p.name) + '</span>' + c + '</button>';
+    }).join('');
+    html += '<div class="sec">' + (PROJ ? 'صفحات «' + esc(PROJ) + '»' : 'كل المشاريع مع بعض') + '</div>';
+    html += PAGES.filter(function (p) { return p.scoped && p.ok(); }).map(function (p) { return btn(p); }).join('');
+  } else if (can('send')) {
+    html += btn(PAGES[3]);
+  }
+  html += '<div class="sec">عام</div>';
+  html += PAGES.filter(function (p) { return !p.scoped && p.k !== 'home' && p.ok(); }).map(function (p) {
+    return btn(p, p.k === 'mine' && openMine ? '<span class="count">' + n(openMine) + '</span>' : '');
   }).join('');
+  $('nav').innerHTML = html;
   $('meBox').innerHTML = '<div class="avatar">' + initial(D.me.name) + '</div><div><b>' + esc(D.me.name) + '</b><span>' + esc(D.me.role) + '</span></div>' +
     '<button data-act="logout" title="خروج">' + icon('out') + '</button>';
-  var page = PAGES.filter(function (p) { return p.k === PAGE; })[0];
-  $('pageTitle').textContent = page.t;
-  $('pageSub').textContent = arDate(D.today);
-  document.title = page.t + ' — متابعة المراجعة';
-  var fn = { dash: pDash, mine: pMine, lectures: pLectures, send: pSend, reviewers: pReviewers, team: pTeam, log: pLog, settings: pSettings }[PAGE];
+  var title = page.scoped && PROJ ? PROJ + ' · ' + page.t : page.t;
+  $('pageTitle').innerHTML = page.scoped && PROJ ? '<span class="scope">' + pchip(PROJ) + ' ' + esc(page.t) + '</span>' : esc(page.t);
+  $('pageSub').textContent = arDate(D.today) + (page.scoped && !PROJ ? ' · كل المشاريع' : '');
+  document.title = title + ' — متابعة المراجعة';
+  var fn = { home: pHome, dash: pDash, mine: pMine, lectures: pLectures, send: pSend, reviewers: pReviewers, team: pTeam, log: pLog, settings: pSettings }[PAGE];
   $('view').innerHTML = fn();
   if (PAGE === 'lectures') drawRows();
   if (PAGE === 'send') initSend();
 }
 
 function go(k) {
+  if (k === 'home') setProj('');
   PAGE = k; $('side').classList.remove('open'); $('veil').classList.add('hidden');
   try { history.replaceState(null, '', '#/' + k); } catch (e) {}
   render(); window.scrollTo(0, 0);
 }
 
+// ---------- كل المشاريع ----------
+function pHome() {
+  var ps = projs();
+  if (!ps.length) return '<div class="card empty"><span class="big">🗂</span>مفيش مشاريع مفعّلة ليك.</div>';
+  var L = D.lectures.filter(function (l) { return ps.some(function (p) { return p.name === l.project; }); });
+  var by = function (st) { return L.filter(function (l) { return l.status === st; }).length; };
+  var late = L.filter(isLate);
+  var hour = new Date().getHours();
+  var kpis = [
+    ['open', 'عند المراجعين', L.filter(isOpen).length, '#e8b730'], ['late', 'متأخرة', late.length, '#d4554a'],
+    [ST.DONE, 'مستنية التعديل', by(ST.DONE), '#2f9e66'], [ST.FIXED, 'مستنية الرفع', by(ST.FIXED), '#3b7fc0'], [ST.PUB, 'اتنشرت', by(ST.PUB), '#7b68c8'],
+  ].map(function (k) { return '<button class="kpi" style="--c:' + k[3] + '" data-act="filter" data-st="' + k[0] + '"><b>' + n(k[2]) + '</b><span>' + k[1] + '</span><small>كل المشاريع</small></button>'; }).join('');
+  var cards = ps.map(function (p) {
+    var pl = L.filter(function (l) { return l.project === p.name; });
+    var c = function (f) { return pl.filter(f).length; };
+    var pLate = c(isLate), nd = p.nextWorkDay, ndd = nd ? diff(D.today, nd) : null;
+    return '<button class="pcard" style="--pc:' + esc(p.color) + '" data-act="proj" data-p="' + esc(p.name) + '"><div class="band"></div>' +
+      '<div class="ph"><div class="ico">' + icon('folder') + '</div><div><b>' + esc(p.name) + '</b><span>' + n(pl.length) + ' ' + esc(p.item) + ' في النظام</span></div></div>' +
+      '<div class="pst"><div><b>' + n(c(isOpen)) + '</b><span>عند المراجع</span></div><div><b style="color:' + (pLate ? 'var(--bad)' : 'inherit') + '">' + n(pLate) + '</b><span>متأخرة</span></div>' +
+      '<div><b>' + n(c(function (l) { return l.status === ST.DONE; })) + '</b><span>للتعديل</span></div><div><b>' + n(c(function (l) { return l.status === ST.PUB; })) + '</b><span>اتنشرت</span></div></div>' +
+      '<div class="pf"><span>يوم الشغل الجاي</span><b>' + (nd ? arDate(nd, true) + (ndd === 0 ? ' — النهارده' : ndd === 1 ? ' — بكرة' : '') : '—') + '</b></div></button>';
+  }).join('');
+  var lateList = late.slice().sort(function (a, b) { return b.lateDays - a.lateDays; }).slice(0, 6);
+  return '<div class="hello"><div><h2>' + (hour < 12 ? 'صباح الخير' : 'مساء الخير') + '، ' + esc(D.me.name) + '</h2>' +
+    '<p>كل مشاريع المراجعة في مكان واحد. اختار مشروع عشان تدخل على صفحته.</p></div></div>' +
+    '<div class="kpis">' + kpis + '</div>' +
+    '<h3 style="color:var(--navy);margin:24px 0 12px">المشاريع (' + n(ps.length) + ')</h3><div class="pcards">' + cards + '</div>' +
+    '<div class="grid g2" style="margin-top:18px"><div class="card"><h3>المتأخر في كل المشاريع</h3>' +
+    (lateList.length ? '<div class="rows">' + lateList.map(function (l) {
+      return '<div class="row" data-act="lec" data-id="' + l.id + '"><div class="grow"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.reviewer) + '</div></div>' + pchip(l.project) + '<span class="chip due-late">' + rel(l.due) + '</span></div>';
+    }).join('') + '</div>' : '<div class="empty"><span class="big">👌</span>مفيش أي تأخير</div>') + '</div>' +
+    '<div class="card"><h3>آخر النشاط<a class="more" href="#" data-act="go" data-k="log">السجل كامل</a></h3>' + actList(scopedLog().slice(0, 8)) + '</div></div>';
+}
+
 // ---------- لوحة التحكم ----------
 function pDash() {
-  var L = D.lectures, open = L.filter(isOpen), late = L.filter(isLate);
+  var L = scoped(), open = L.filter(isOpen), late = L.filter(isLate);
   var by = function (st) { return L.filter(function (l) { return l.status === st; }); };
   var hour = new Date().getHours();
-  var nd = D.nextWorkDay, ndd = nd ? diff(D.today, nd) : null;
+  var nd = PROJ ? projOf(PROJ).nextWorkDay : D.nextWorkDay, ndd = nd ? diff(D.today, nd) : null;
 
   var kpis = [
     ['open', 'عند المراجعين', open.length, late.length ? 'منها ' + n(late.length) + ' متأخرة' : 'كله في الميعاد', '#e8b730'],
@@ -493,7 +587,7 @@ function pDash() {
   var upHtml = upcoming.length ? '<div class="rows">' + upcoming.map(function (l) {
     return '<div class="row" data-act="lec" data-id="' + l.id + '"><div class="avatar">' + initial(l.reviewer) + '</div>' +
       '<div class="grow"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.reviewer) + ' · ' + arDate(l.due) + '</div></div>' +
-      '<span class="chip ' + relClass(l.due) + '">' + rel(l.due) + '</span></div>';
+      (PROJ ? '' : pchip(l.project)) + '<span class="chip ' + relClass(l.due) + '">' + rel(l.due) + '</span></div>';
   }).join('') + '</div>' : '<div class="empty"><span class="big">🎉</span>مفيش مراجعات مفتوحة دلوقتي</div>';
 
   // آخر دفعة
@@ -518,7 +612,7 @@ function pDash() {
   }).join('') + '</div>';
 
   return '<div class="hello"><div><h2>' + (hour < 12 ? 'صباح الخير' : 'مساء الخير') + '، ' + esc(D.me.name) + '</h2>' +
-    '<p>ده ملخص شغل المراجعة النهارده.</p></div>' +
+    '<p>' + (PROJ ? 'ملخص مشروع «' + esc(PROJ) + '» النهارده.' : 'ملخص كل المشاريع النهارده.') + '</p></div>' +
     (nd ? '<div class="nextday">' + icon('cal') + '<div><span>يوم الشغل الجاي</span><b>' + arDate(nd) + (ndd === 0 ? ' — النهارده' : ndd === 1 ? ' — بكرة' : ' — بعد ' + daysTxt(ndd)) + '</b></div></div>' : '') + '</div>' +
     '<div class="kpis">' + kpis + '</div>' +
     '<div class="grid g2"><div class="card"><h3>التسليمات الجاية<a class="more" href="#" data-act="filter" data-st="open">الكل</a></h3>' + upHtml + '</div>' +
@@ -527,13 +621,14 @@ function pDash() {
     '<div class="card"><h3>مسار الشغل</h3>' + pipe + '</div></div>';
 }
 
+function scopedLog() { return PROJ ? D.log.filter(function (a) { return a.project === PROJ; }) : D.log; }
 function actList(items) {
   if (!items.length) return '<div class="empty">لسه مفيش نشاط</div>';
   return items.map(function (a) {
     var t = a.at.split(' ');
     var when = t[0] === D.today ? n(t[1] || '') : arDate(t[0], true);
-    return '<div class="act"><span class="dotc"></span><div><b>' + esc(a.who) + '</b> ' + esc(a.what) +
-      (a.lecture ? ' <span class="muted">— «' + esc(a.lecture) + '»</span>' : '') + '</div><span class="when">' + when + '</span></div>';
+    return '<div class="act"><span class="dotc"' + (a.project ? ' style="background:' + esc(projOf(a.project).color) + '"' : '') + '></span><div><b>' + esc(a.who) + '</b> ' + esc(a.what) +
+      (a.lecture ? ' <span class="muted">— «' + esc(a.lecture) + '»</span>' : '') + (!PROJ && a.project ? ' ' + pchip(a.project) : '') + '</div><span class="when">' + when + '</span></div>';
   }).join('');
 }
 
@@ -546,7 +641,7 @@ function pMine() {
   var card = function (l) {
     var notes = noteList(l), open = isOpen(l);
     return '<div class="card task' + (isLate(l) ? ' late' : open ? '' : ' closed') + '">' +
-      '<div class="head"><h4>' + esc(l.title) + '</h4>' + (open ? '<span class="chip ' + relClass(l.due) + '">' + rel(l.due) + '</span>' : chip(l.status)) + '</div>' +
+      '<div class="head"><h4>' + esc(l.title) + '</h4>' + pchip(l.project) + (open ? '<span class="chip ' + relClass(l.due) + '">' + rel(l.due) + '</span>' : chip(l.status)) + '</div>' +
       '<div class="small muted">موعد التسليم: ' + arDate(l.due) + (l.done ? ' · اتسلّمت ' + arDate(l.done) : '') + '</div>' +
       (open ? '<div style="margin-top:12px"><textarea id="note-' + l.id + '" placeholder="اكتب ملاحظة… (مثلًا: الدقيقة ٣: خطأ في الآية)"></textarea></div>' : '') +
       '<div class="bar">' +
@@ -570,7 +665,7 @@ function filesHtml(files) {
 
 // ---------- المحاضرات ----------
 function pLectures() {
-  var L = D.lectures;
+  var L = scoped();
   var cnt = function (f) { return L.filter(f).length; };
   var segs = [
     ['all', 'الكل', L.length], ['open', 'عند المراجعين', cnt(isOpen)], ['late', 'متأخرة', cnt(isLate)],
@@ -579,20 +674,20 @@ function pLectures() {
     [ST.PUB, 'اتنشرت', cnt(function (l) { return l.status === ST.PUB; })],
   ];
   var revs = Array.from(new Set(L.map(function (l) { return l.reviewer; }).filter(Boolean)));
-  return '<div class="toolbar"><div class="search">' + icon('search') + '<input type="search" id="q" placeholder="دوّر باسم المحاضرة أو المراجع…" value="' + esc(F.q) + '"></div>' +
+  return '<div class="toolbar"><div class="search">' + icon('search') + '<input type="search" id="q" placeholder="دوّر بالعنوان أو المراجع…" value="' + esc(F.q) + '"></div>' +
     '<select id="revFilter"><option value="">كل المراجعين</option>' + revs.map(function (r) { return '<option' + (r === F.rev ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select>' +
     (can('send') ? '<button class="btn primary" data-act="go" data-k="send">' + icon('plus') + 'دفعة جديدة</button>' : '') + '</div>' +
     '<div class="seg">' + segs.map(function (s) { return '<button class="' + (F.st === s[0] ? 'on' : '') + '" data-act="seg" data-st="' + s[0] + '">' + s[1] + '<em>' + n(s[2]) + '</em></button>'; }).join('') + '</div>' +
-    '<div class="card tablecard"><table class="tbl stack"><thead><tr><th>#</th><th>المحاضرة</th><th>المراجع</th><th>أُرسلت</th><th>التسليم</th><th>الملاحظات</th><th>الحالة</th></tr></thead><tbody id="rows"></tbody></table></div>';
+    '<div class="card tablecard"><table class="tbl stack"><thead><tr><th>#</th><th>العنوان</th>' + (PROJ ? '' : '<th>المشروع</th>') + '<th>المراجع</th><th>أُرسلت</th><th>التسليم</th><th>الملاحظات</th><th>الحالة</th></tr></thead><tbody id="rows"></tbody></table></div>';
 }
 function filtered() {
   var q = F.q.trim();
-  return D.lectures.filter(function (l) {
+  return scoped().filter(function (l) {
     if (F.rev && l.reviewer !== F.rev) return false;
     if (F.st === 'open' && !isOpen(l)) return false;
     if (F.st === 'late' && !isLate(l)) return false;
     if (['all', 'open', 'late'].indexOf(F.st) === -1 && l.status !== F.st) return false;
-    if (q && (l.title + ' ' + l.reviewer).indexOf(q) === -1) return false;
+    if (q && (l.title + ' ' + l.reviewer + ' ' + l.project).indexOf(q) === -1) return false;
     return true;
   });
 }
@@ -600,11 +695,11 @@ function drawRows() {
   var ls = filtered();
   $('rows').innerHTML = ls.length ? ls.map(function (l) {
     var nn = noteList(l).length + l.files.length;
-    return '<tr data-act="lec" data-id="' + l.id + '"><td class="num">' + n(l.id || '') + '</td><td class="ttl">' + esc(l.title) + '</td>' +
+    return '<tr data-act="lec" data-id="' + l.id + '"><td class="num">' + n(l.id || '') + '</td><td class="ttl">' + esc(l.title) + '</td>' + (PROJ ? '' : '<td class="hide-m">' + pchip(l.project) + '</td>') +
       '<td class="sub">' + esc(l.reviewer) + (isOpen(l) ? ' · <span class="chip ' + relClass(l.due) + '">' + rel(l.due) + '</span>' : '') + '</td>' +
       '<td class="hide-m">' + arDate(l.sent, true) + '</td><td class="hide-m">' + arDate(l.due, true) + '</td>' +
       '<td class="hide-m">' + (nn ? n(nn) : '<span class="muted">—</span>') + '</td><td class="stc">' + chip(l.status) + '</td></tr>';
-  }).join('') : '<tr><td colspan="7"><div class="empty">مفيش محاضرات بالفلتر ده</div></td></tr>';
+  }).join('') : '<tr><td colspan="8"><div class="empty">مفيش حاجة بالفلتر ده</div></td></tr>';
 }
 
 // ---------- تفاصيل محاضرة ----------
@@ -615,7 +710,7 @@ function openLecture(id) {
   var opts = D.statuses.map(function (s) { return '<option' + (s === l.status ? ' selected' : '') + '>' + s + '</option>'; }).join('');
   $('drawer').innerHTML = '<header><h2>' + esc(l.title) + '</h2>' + chip(l.status) +
     '<button class="btn icon ghost" data-act="close" aria-label="إغلاق">' + icon('x') + '</button></header><div class="body">' +
-    '<dl class="meta"><dt>الرقم</dt><dd>' + n(l.id) + '</dd><dt>المراجع</dt><dd>' + esc(l.reviewer || '—') + '</dd>' +
+    '<dl class="meta"><dt>المشروع</dt><dd>' + pchip(l.project) + '</dd><dt>الرقم</dt><dd>' + n(l.id) + '</dd><dt>المراجع</dt><dd>' + esc(l.reviewer || '—') + '</dd>' +
     '<dt>أُرسلت</dt><dd>' + arDate(l.sent) + '</dd><dt>موعد التسليم</dt><dd>' + arDate(l.due) + (open ? ' · <span class="chip ' + relClass(l.due) + '">' + rel(l.due) + '</span>' : '') + '</dd>' +
     '<dt>التذكير</dt><dd>' + (l.reminded ? 'اتبعت ✓' : open ? 'هيتبعت قبل الموعد بيوم' : '—') + '</dd>' +
     '<dt>اتسلّمت</dt><dd>' + (l.done ? arDate(l.done) : '—') + '</dd></dl>' +
@@ -636,16 +731,21 @@ function openLecture(id) {
 function closeAll() { $('drawer').classList.add('hidden'); $('veil').classList.add('hidden'); $('side').classList.remove('open'); $('drawer').dataset.id = ''; }
 
 // ---------- إرسال دفعة ----------
+function sendProj() { var el = $('sendProj'); return el ? el.value : (PROJ || (projs()[0] || {}).name || ''); }
 function pSend() {
+  var ps = projs(), cur = PROJ || (ps[0] || {}).name || '';
+  var P = projOf(cur);
   return '<div class="card"><h3>دفعة جديدة للمراجعة</h3>' +
-    '<p class="muted small" style="margin-top:-6px">لكل محاضرة: العنوان، ورابط الـ PDF على Drive، والمراجع. الموعد بيتحسب لوحده على يوم الشغل الجاي، وتقدر تغيّره.</p>' +
+    '<div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:14px"><div style="min-width:220px"><label class="lb">المشروع</label>' +
+    '<select id="sendProj">' + ps.map(function (p) { return '<option' + (p.name === cur ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</select></div>' +
+    '<p class="muted small" style="margin:0 0 8px">الموعد بيتحسب لوحده على يوم الشغل الجاي للمشروع (<b id="sendDue">' + arDate(P.defaultDue) + '</b>)، وتقدر تغيّره.</p></div>' +
     '<div id="items"></div><div style="display:flex;gap:10px;flex-wrap:wrap">' +
-    '<button class="btn" data-act="add-item">' + icon('plus') + 'محاضرة</button>' +
+    '<button class="btn" data-act="add-item">' + icon('plus') + 'عنصر</button>' +
     '<button class="btn primary" id="sendBtn" data-act="send">' + icon('send') + 'ابعت للمراجعين</button></div>' +
     '<div id="sendResult"></div></div>' +
     (D.reviewers.length ? '' : '<div class="card"><b>مفيش مراجعين نشطين.</b> <span class="muted">كل مراجع يفتح البوت ويضغط Start، وبعدها هيظهر هنا.</span></div>');
 }
-function blank() { return { title: '', link: '', reviewer: '', due: D.defaultDue }; }
+function blank() { return { title: '', link: '', reviewer: '', due: projOf(sendProj()).defaultDue }; }
 function readItems() {
   return Array.prototype.map.call(document.querySelectorAll('#items .item'), function (el) {
     return { title: el.querySelector('[name=title]').value, link: el.querySelector('[name=link]').value,
@@ -655,8 +755,8 @@ function readItems() {
 function drawItems(items) {
   $('items').innerHTML = items.map(function (it, i) {
     return '<div class="item' + (it.error ? ' err' : '') + '" data-error="' + esc(it.error || '') + '"><div class="n">' + n(i + 1) + '</div>' +
-      '<div><label class="lb">عنوان المحاضرة</label><input name="title" value="' + esc(it.title) + '" placeholder="مثلًا: المجلس ١٩ — الشركة"></div>' +
-      '<div><label class="lb">رابط الـ PDF على Drive</label><input name="link" dir="ltr" value="' + esc(it.link) + '" placeholder="https://drive.google.com/file/d/…"></div>' +
+      '<div><label class="lb">عنوان ال' + esc(projOf(sendProj()).item) + '</label><input name="title" value="' + esc(it.title) + '" placeholder="العنوان"></div>' +
+      '<div><label class="lb">رابط الملف على Drive</label><input name="link" dir="ltr" value="' + esc(it.link) + '" placeholder="https://drive.google.com/file/d/…"></div>' +
       '<div><label class="lb">المراجع</label><select name="rev"><option value="">— اختار —</option>' + D.reviewers.map(function (r) {
         return '<option' + (r === it.reviewer ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select></div>' +
       '<div><label class="lb" style="display:flex;justify-content:space-between">موعد التسليم<button class="rm" data-act="rm-item" data-i="' + i + '" title="شيل">×</button></label>' +
@@ -672,7 +772,7 @@ function initSend() {
 
 // ---------- المراجعون ----------
 function stats(name) {
-  var ls = D.lectures.filter(function (l) { return l.reviewer === name; });
+  var ls = scoped().filter(function (l) { return l.reviewer === name; });
   var deliv = ls.filter(function (l) { return l.done; });
   var onTime = deliv.filter(function (l) { return !l.due || l.done <= l.due; }).length;
   var durs = deliv.filter(function (l) { return l.sent; }).map(function (l) { return diff(l.sent, l.done); });
@@ -683,7 +783,7 @@ function stats(name) {
 }
 function pReviewers() {
   var names = D.team.filter(function (m) { return m.active; }).map(function (m) { return m.name; });
-  D.lectures.forEach(function (l) { if (l.reviewer && names.indexOf(l.reviewer) === -1) names.push(l.reviewer); });
+  scoped().forEach(function (l) { if (l.reviewer && names.indexOf(l.reviewer) === -1) names.push(l.reviewer); });
   var people = names.map(function (nm) { return { m: D.team.filter(function (x) { return x.name === nm; })[0] || { name: nm, role: 'مراجع' }, s: stats(nm) }; })
     .filter(function (p) { return p.s.total || p.m.role === 'مراجع'; })
     .sort(function (a, b) { return b.s.open - a.s.open || b.s.total - a.s.total; });
@@ -711,11 +811,17 @@ function pTeam() {
       : roleChip(m.role);
     var notifyCell = m.role === 'مراجع' ? '<span class="muted small">—</span>'
       : '<label class="toggle"><input type="checkbox" data-mem="notify" data-chat="' + esc(m.chat) + '"' + (m.notify ? ' checked' : '') + (edit ? '' : ' disabled') + '><span></span></label>';
+    var actP = (D.projects || []).filter(function (p) { return p.active; });
+    var projCell = m.role === 'مالك' ? '<span class="muted small">كل المشاريع</span>'
+      : D.me.isOwner ? actP.map(function (p) { var on = (m.projects || []).indexOf(p.name) !== -1;
+          return '<button class="ptog' + (on ? ' on' : '') + '" style="--pc:' + esc(p.color) + '" data-act="mem-proj" data-chat="' + esc(m.chat) + '" data-p="' + esc(p.name) + '">' + esc(p.name) + '</button>'; }).join('') +
+          ((m.projects || []).length ? '' : '<div class="small muted">كل المشاريع</div>')
+      : '<span class="small">' + ((m.projects || []).length ? m.projects.map(esc).join('، ') : 'كل المشاريع') + '</span>';
     return '<tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar">' + initial(m.name) + '</div>' +
       (edit ? '<input class="member-name" data-mem="name" data-chat="' + esc(m.chat) + '" value="' + esc(m.name) + '">' : '<b>' + esc(m.name) + '</b>') + '</div></td>' +
       '<td dir="ltr" class="small muted" style="text-align:right">' + esc(m.username || '—') + '</td><td>' + roleCell + '</td>' +
       '<td><label class="toggle"><input type="checkbox" data-mem="active" data-chat="' + esc(m.chat) + '"' + (m.active ? ' checked' : '') + (edit && !isOwnerRow ? '' : ' disabled') + '><span></span></label></td>' +
-      '<td>' + notifyCell + '</td><td class="small muted">' + arDate(m.joined, true) + '</td></tr>';
+      '<td>' + notifyCell + '</td><td style="min-width:220px">' + projCell + '</td><td class="small muted">' + arDate(m.joined, true) + '</td></tr>';
   }).join('');
   var link = D.bot ? 'https://t.me/' + D.bot : '';
   var P = D.permissions;
@@ -729,8 +835,8 @@ function pTeam() {
   return '<div class="card"><h3>' + icon('users') + 'أعضاء الفريق <span class="muted small" style="font-weight:500">(' + n(D.team.length) + ')</span></h3>' +
     (link ? '<div class="invite" style="margin-bottom:14px"><span>🔗 أي حد جديد يفتح البوت ويضغط <b>Start</b>، فيظهر هنا كمراجع:</span><code>' + esc(link) + '</code>' +
       '<button class="btn sm" data-act="copy" data-text="' + esc(link) + '">' + icon('copy') + 'نسخ</button></div>' : '') +
-    '<div class="scroll-x"><table class="tbl"><thead><tr><th>الاسم</th><th>تليجرام</th><th>الدور</th><th>نشط</th><th>يستلم الإشعارات</th><th>انضم</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-    '<p class="small muted" style="margin-bottom:0">«يستلم الإشعارات»: كل ملاحظة باسم صاحبها، وكل تسليم، وملخص الصبح في أيام الشغل (للمالك والمدراء). تغيير الاسم بيتطبّق على كل محاضراته.</p></div>' +
+    '<div class="scroll-x"><table class="tbl"><thead><tr><th>الاسم</th><th>تليجرام</th><th>الدور</th><th>نشط</th><th>يستلم الإشعارات</th><th>المشاريع</th><th>انضم</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<p class="small muted" style="margin-bottom:0">«يستلم الإشعارات»: كل ملاحظة باسم صاحبها، وكل تسليم، وملخص الصبح في أيام الشغل (للمالك والمدراء). تغيير الاسم بيتطبّق على كل محاضراته. «المشاريع»: المدير بيشوف المشاريع اللي مختارة له بس، ولو مفيش ولا واحد مختار يبقى بيشوف الكل.</p></div>' +
     '<div class="card"><h3>' + icon('shield') + 'الأدوار</h3><div class="rolesdesc">' +
     '<div><b>' + roleChip('مالك') + '</b>كل الصلاحيات دايمًا، وهو اللي بيحدد الأدوار والصلاحيات. بيوصله تذكير بالليل قبل يوم الشغل.</div>' +
     '<div><b>' + roleChip('مدير') + '</b>بيتابع الشغل حسب الصلاحيات اللي تحت. يقدر يدير المراجعين بس، مش المدراء.</div>' +
@@ -742,18 +848,28 @@ function pTeam() {
 
 // ---------- السجل ----------
 function pLog() {
-  if (!D.log.length) return '<div class="card empty"><span class="big">🧾</span>لسه مفيش نشاط</div>';
+  var LG = scopedLog();
+  if (!LG.length) return '<div class="card empty"><span class="big">🧾</span>لسه مفيش نشاط</div>';
   var out = '', last = '';
-  D.log.forEach(function (a) {
+  LG.forEach(function (a) {
     var day = a.at.split(' ')[0];
     if (day !== last) { out += '<div class="day">' + (day === D.today ? 'النهارده' : arDate(day)) + '</div>'; last = day; }
     out += '<div class="act"><span class="dotc"></span><div><b>' + esc(a.who) + '</b> ' + esc(a.what) +
-      (a.lecture ? ' <span class="muted">— «' + esc(a.lecture) + '»</span>' : '') + '</div><span class="when">' + n(a.at.split(' ')[1] || '') + '</span></div>';
+      (a.lecture ? ' <span class="muted">— «' + esc(a.lecture) + '»</span>' : '') + (!PROJ && a.project ? ' ' + pchip(a.project) : '') + '</div><span class="when">' + n(a.at.split(' ')[1] || '') + '</span></div>';
   });
   return '<div class="card">' + out + '</div>';
 }
 
 // ---------- الإعدادات ----------
+function projRow(p, i) {
+  var wd = p.workDays || [];
+  return '<div class="prow" data-old="' + esc(p.old !== undefined ? p.old : p.name) + '">' +
+    '<input name="pname" value="' + esc(p.name) + '" placeholder="اسم المشروع">' +
+    '<input name="pitem" value="' + esc(p.item) + '" placeholder="اسم العنصر (محاضرة، مقالة…)">' +
+    '<input type="color" name="pcolor" value="' + esc(p.color) + '">' +
+    '<div class="dd days">' + DAYS.map(function (d, k) { return '<label><input type="checkbox" name="pwd" value="' + k + '"' + (wd.indexOf(k) !== -1 ? ' checked' : '') + '><span>' + d + '</span></label>'; }).join('') + '</div>' +
+    '<label class="toggle" title="نشط"><input type="checkbox" name="pact"' + (p.active !== false ? ' checked' : '') + '><span></span></label></div>';
+}
 function pSettings() {
   var s = D.settings;
   var hours = function (id, v) { var o = ''; for (var h = 0; h < 24; h++) o += '<option value="' + h + '"' + (h === v ? ' selected' : '') + '>' + hourTxt(h) + '</option>'; return '<select id="' + id + '" style="max-width:220px">' + o + '</select>'; };
@@ -763,6 +879,12 @@ function pSettings() {
     '<div class="formrow"><div><b>تذكير المراجعين وملخص الصبح</b><p>«التسليم بكرة» للمراجعين، وملخص أيام الشغل للمدراء.</p></div>' + hours('hour', s.hour) + '</div>' +
     '<div class="formrow"><div><b>تذكير المالك قبل يوم الشغل</b><p>«بكرة يوم شغل» باللي مستنيه.</p></div>' + hours('adminHour', s.adminHour) + '</div>' +
     '<button class="btn primary" style="margin-top:14px" data-act="save-settings">حفظ الإعدادات</button></div>' +
+    '<div class="card"><h3>' + icon('folder') + 'المشاريع</h3>' +
+    '<p class="muted small" style="margin-top:-6px">أيام الشغل لكل مشروع: لو ما اخترتش أيام، المشروع بياخد أيام الشغل العامة اللي فوق. والمشروع المتوقّف بيختفي من الموقع ومن الإرسال، وبياناته بتفضل محفوظة.</p>' +
+    '<div class="prow head"><span>المشروع</span><span>اسم العنصر</span><span>اللون</span><span>أيام الشغل</span><span>نشط</span></div>' +
+    '<div id="projRows">' + (D.projects || []).map(projRow).join('') + '</div>' +
+    '<div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap"><button class="btn" data-act="add-proj">' + icon('plus') + 'مشروع جديد</button>' +
+    '<button class="btn primary" data-act="save-projects">حفظ المشاريع</button></div></div>' +
     '<div class="card"><h3>معلومات</h3><dl class="meta"><dt>البوت</dt><dd>' + (D.bot ? '<a href="https://t.me/' + esc(D.bot) + '" target="_blank" rel="noopener" dir="ltr">@' + esc(D.bot) + '</a>' : '—') + '</dd>' +
     '<dt>المحاضرات</dt><dd>' + n(D.lectures.length) + '</dd><dt>الفريق</dt><dd>' + n(D.team.length) + ' عضو</dd></dl></div>';
 }
@@ -775,6 +897,28 @@ document.addEventListener('click', function (e) {
   if (a.tagName === 'A' && a.getAttribute('href') === '#') e.preventDefault();
   switch (act) {
     case 'go': go(a.dataset.k); break;
+    case 'proj': setProj(a.dataset.p); F.st = 'all'; F.rev = ''; F.q = ''; go(allowed('dash') ? 'dash' : 'send'); break;
+    case 'mem-proj': {
+      var mem = D.team.filter(function (x) { return x.chat === a.dataset.chat; })[0];
+      var list = (mem.projects || []).slice(), pi = list.indexOf(a.dataset.p);
+      if (pi === -1) list.push(a.dataset.p); else list.splice(pi, 1);
+      a.disabled = true;
+      api('updateMember', { chat: a.dataset.chat, projects: list }).then(function () { toast('اتحفظ ✓'); render(); })
+        .catch(function (er) { toast(er.message, true); render(); });
+      break;
+    }
+    case 'add-proj': $('projRows').insertAdjacentHTML('beforeend', projRow({ name: '', old: '', item: 'محاضرة', color: '#5a6b78', workDays: [], active: true })); break;
+    case 'save-projects': {
+      var rows = Array.prototype.map.call(document.querySelectorAll('#projRows .prow'), function (r) {
+        return { old: r.dataset.old, name: r.querySelector('[name=pname]').value.trim(), item: r.querySelector('[name=pitem]').value.trim(),
+          color: r.querySelector('[name=pcolor]').value, active: r.querySelector('[name=pact]').checked,
+          workDays: Array.prototype.filter.call(r.querySelectorAll('[name=pwd]'), function (c) { return c.checked; }).map(function (c) { return Number(c.value); }) };
+      }).filter(function (r) { return r.name || r.old; });
+      busy(a, true);
+      api('saveProjects', { projects: rows }).then(function () { busy(a, false); toast('اتحفظت المشاريع ✓'); render(); })
+        .catch(function (er) { busy(a, false); toast(er.message, true); });
+      break;
+    }
     case 'menu': $('side').classList.add('open'); $('veil').classList.remove('hidden'); break;
     case 'close': closeAll(); break;
     case 'refresh': busy(a, true, '…'); refresh().then(function () { busy(a, false); toast('اتحدّث ✓'); }); break;
@@ -819,14 +963,14 @@ document.addEventListener('click', function (e) {
     case 'rm-item': { var its = readItems(); its.splice(Number(a.dataset.i), 1); drawItems(its.length ? its : [blank()]); saveDraft(); break; }
     case 'send': {
       var items = readItems().filter(function (x) { return x.title.trim() || x.link.trim(); });
-      if (!items.length) { toast('اكتب محاضرة واحدة على الأقل', true); return; }
+      if (!items.length) { toast('اكتب عنصر واحد على الأقل', true); return; }
       busy(a, true, '⏳ جاري الإرسال…');
-      api('send', { items: items }).then(function (res) {
+      api('send', { project: sendProj(), items: items }).then(function (res) {
         busy(a, false);
         var txt = '';
         if (res.ok.length) txt += '✅ اتبعت (' + n(res.ok.length) + '):\n' + res.ok.join('\n');
         if (res.bad.length) txt += (txt ? '\n\n' : '') + '⚠️ ما اتبعتش (' + n(res.bad.length) + ') — صلّحها وابعت تاني.';
-        drawItems(res.bad.length ? res.bad.map(function (b) { return { title: b.title, link: b.link, reviewer: b.reviewer, due: b.due || D.defaultDue, error: b.error }; }) : [blank(), blank(), blank(), blank()]);
+        drawItems(res.bad.length ? res.bad.map(function (b) { return { title: b.title, link: b.link, reviewer: b.reviewer, due: b.due || projOf(sendProj()).defaultDue, error: b.error }; }) : [blank(), blank(), blank(), blank()]);
         saveDraft();
         $('sendResult').innerHTML = '<div class="result ' + (res.bad.length ? 'bad' : 'ok') + '">' + esc(txt) + '</div>';
       }).catch(function (er) { busy(a, false); toast(er.message, true); });
@@ -862,6 +1006,13 @@ document.addEventListener('input', function (e) {
 document.addEventListener('change', function (e) {
   var t = e.target;
   if (t.id === 'revFilter') { F.rev = t.value; drawRows(); return; }
+  if (t.id === 'sendProj') {          // تغيير المشروع: المواعيد اللي على الافتراضي القديم تتغيّر للجديد
+    var oldDue = projOf(PROJ || (projs()[0] || {}).name).defaultDue, P = projOf(t.value);
+    setProj(t.value);
+    $('sendDue').textContent = arDate(P.defaultDue);
+    drawItems(readItems().map(function (it) { if (!it.due || it.due === oldDue) it.due = P.defaultDue; return it; }));
+    saveDraft(); render(); return;
+  }
   if (t.closest && t.closest('#items')) { saveDraft(); return; }
   if (t.dataset && t.dataset.mem) {
     var args = { chat: t.dataset.chat };
@@ -889,6 +1040,7 @@ function showApp() { $('login').classList.add('hidden'); $('app').classList.remo
 
 function init() {
   load();
+  PROJ = S.proj || '';
   var h = location.hash;
   var m = /#login=([a-f0-9]{32})&api=([^&]+)/.exec(h);
   if (m) {
@@ -910,7 +1062,7 @@ function init() {
   if (S.api && S.session) {
     showApp();
     var c = loadCache();
-    if (c) { D = c; if (!PAGE || !allowed(PAGE)) PAGE = D.me.perms.view_all ? 'dash' : 'mine'; render(); refresh(true); }   // عرض فوري لآخر بيانات، والتحديث في الخلفية
+    if (c) { D = c; if (!PAGE || !allowed(PAGE)) PAGE = (D.me.isOwner || D.me.perms.view_all) ? 'home' : 'mine'; render(); refresh(true); }   // عرض فوري لآخر بيانات، والتحديث في الخلفية
     else refresh();
   } else showLogin();
 }

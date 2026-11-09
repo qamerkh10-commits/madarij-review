@@ -10,18 +10,24 @@
 
 const TZ = 'Africa/Cairo';
 const SITE_URL = 'https://qamerkh10-commits.github.io/madarij-review/';
-const SH = { LECT: 'المحاضرات', TEAM: 'الفريق', PERM: 'الصلاحيات', LOG: 'السجل', SET: 'الإعدادات' };
+const SH = { LECT: 'المحاضرات', TEAM: 'الفريق', PROJ: 'المشاريع', PERM: 'الصلاحيات', LOG: 'السجل', SET: 'الإعدادات' };
 
 // أعمدة ورقة المحاضرات (1 = A)
 const L = { ID: 1, TITLE: 2, FILE: 3, REVIEWER: 4, SENT: 5, DUE: 6, STATUS: 7,
-            NOTES: 8, NOTE_FILES: 9, DONE_AT: 10, REMINDED: 11, MSGS: 12 };
+            NOTES: 8, NOTE_FILES: 9, DONE_AT: 10, REMINDED: 11, MSGS: 12, PROJECT: 13 };
 const L_HEADERS = ['الرقم', 'عنوان المحاضرة', 'ملف PDF (رابط Drive)', 'المراجع',
   'تاريخ الإرسال', 'موعد التسليم', 'الحالة', 'ملاحظات المراجع', 'ملفات الملاحظات',
-  'تاريخ التسليم', 'تنبيه قبلها بيوم', '(داخلي) رسائل تليجرام'];
+  'تاريخ التسليم', 'تنبيه قبلها بيوم', '(داخلي) رسائل تليجرام', 'المشروع'];
 
 // أعمدة ورقة الفريق
-const T = { NAME: 1, CHAT: 2, USER: 3, JOINED: 4, ROLE: 5, ACTIVE: 6, NOTIFY: 7 };
-const T_HEADERS = ['الاسم', 'معرّف تليجرام', 'حساب تليجرام', 'تاريخ الانضمام', 'الدور', 'نشط', 'يستلم الإشعارات'];
+const T = { NAME: 1, CHAT: 2, USER: 3, JOINED: 4, ROLE: 5, ACTIVE: 6, NOTIFY: 7, PROJECTS: 8 };
+const T_HEADERS = ['الاسم', 'معرّف تليجرام', 'حساب تليجرام', 'تاريخ الانضمام', 'الدور', 'نشط', 'يستلم الإشعارات', 'المشاريع (فاضي = الكل)'];
+
+// المشاريع: [الاسم، اسم العنصر، اللون]
+const P_HEADERS = ['المشروع', 'اسم العنصر', 'اللون', 'أيام الشغل (فاضي = العامة)', 'نشط'];
+const DEFAULT_PROJECTS = [
+  ['أخصر', 'محاضرة', '#2E8B85'], ['إناسة', 'حلقة', '#7B68C8'], ['مقدمة', 'محاضرة', '#D08A2E'],
+  ['الروض', 'محاضرة', '#3B7FC0'], ['مشروع الكتب', 'كتاب', '#B3362B'], ['المقالات', 'مقالة', '#2F9E66']];
 const ROLE = { OWNER: 'مالك', MANAGER: 'مدير', REVIEWER: 'مراجع' };
 
 // الصلاحيات: [المفتاح، الوصف، افتراضي المدير، افتراضي المراجع] — المالك عنده كله دايمًا
@@ -142,7 +148,7 @@ function sendDigestNow() {
     SpreadsheetApp.getUi().alert('لسه مفيش مالك. ابعت للبوت /admin والكود اللي ظهر في الإعداد.');
     return;
   }
-  to.forEach(m => send_(m.chat, digestText_()));
+  to.forEach(m => send_(m.chat, digestText_(m)));
   SpreadsheetApp.getUi().alert('اتبعت الملخص على تليجرام ✅');
 }
 
@@ -182,9 +188,9 @@ function sendNewLectures_() {
     const rev = revs.find(r => r.name === l.reviewer);
     if (!rev) { bad.push(name + ': «' + l.reviewer + '» مش مسجّل في البوت أو مش نشط'); return; }
     const id = l.id || nextId;
-    const due = ymdOf_(l.due) || computeDue_(todayYmd_(), s.workDays);
+    const due = ymdOf_(l.due) || computeDue_(todayYmd_(), projWorkDays_(l.project));
     let msg;
-    try { msg = deliver_(l.title, l.file, rev, id, due); }
+    try { msg = deliver_(l.title, l.file, rev, id, due, l.project); }
     catch (e) { bad.push(name + ': ' + e.message); return; }
     if (id === nextId) nextId++;
 
@@ -195,16 +201,18 @@ function sendNewLectures_() {
     sh.getRange(l.row, L.STATUS).setValue(ST.SENT);
     sh.getRange(l.row, L.REMINDED).setValue('');
     sh.getRange(l.row, L.MSGS).setValue(String(msg.message_id));
-    log_('الشيت', 'أرسل للمراجعة ← ' + rev.name, l.title);
+    sh.getRange(l.row, L.PROJECT).setValue(l.project);
+    log_('الشيت', 'أرسل للمراجعة ← ' + rev.name, l.title, l.project);
     ok.push(name + ' ← ' + rev.name + ' (لحد ' + arDate_(due) + ')');
   });
   return { ok: ok, bad: bad };
 }
 
 /** يبعت ملف المحاضرة للمراجع ويرجّع رسالة تليجرام، أو يرمي خطأ برسالة عربية مفهومة */
-function deliver_(title, link, rev, id, due) {
+function deliver_(title, link, rev, id, due, project) {
+  const P = projectOf_(project || defaultProject_());
   const fileId = driveId_(link);
-  if (!fileId) throw new Error('رابط ملف الـ PDF ناقص أو مش مفهوم');
+  if (!fileId) throw new Error('رابط الملف ناقص أو مش مفهوم (لازم رابط من Google Drive)');
   let blob;
   try {
     const f = DriveApp.getFileById(fileId);
@@ -215,7 +223,7 @@ function deliver_(title, link, rev, id, due) {
       : 'مش قادر أفتح الملف من Drive (اتأكد إنه على حسابك أو متشارك معاك)');
   }
   const caption =
-    '📚 <b>محاضرة للمراجعة</b>\n«' + esc_(title) + '»\n\n' +
+    '📚 <b>' + esc_(P.item) + ' للمراجعة — ' + esc_(P.name) + '</b>\n«' + esc_(title) + '»\n\n' +
     '🗓 موعد التسليم: <b>' + arDate_(due) + '</b>\n\n' +
     '✍️ ابعت ملاحظاتك <b>ردًّا (Reply) على الرسالة دي</b> — نص أو ملف أو صورة أو رسالة صوتية — ' +
     'ولما تخلص اضغط «تم التسليم».';
@@ -231,13 +239,13 @@ function deliver_(title, link, rev, id, due) {
 const API = {
   bootstrap: apiBootstrap_, send: apiSend_, setStatus: apiSetStatus_, addNote: apiAddNote_,
   markDone: apiMarkDone_, updateMember: apiUpdateMember_, setPermissions: apiSetPermissions_,
-  saveSettings: apiSaveSettings_, logout: apiLogout_,
+  saveSettings: apiSaveSettings_, saveProjects: apiSaveProjects_, logout: apiLogout_,
 };
 
 function doGet() { return json_({ ok: true, result: 'API شغال ✅' }); }
 
 // العمليات اللي بتكتب: بتاخد قفل، وبترجّع البيانات الجديدة في نفس الرد (من غير رحلة تانية)
-const API_WRITES = { send: 1, setStatus: 1, addNote: 1, markDone: 1, updateMember: 1, setPermissions: 1, saveSettings: 1 };
+const API_WRITES = { send: 1, setStatus: 1, addNote: 1, markDone: 1, updateMember: 1, setPermissions: 1, saveSettings: 1, saveProjects: 1 };
 
 function doPost(e) {
   fresh_();
@@ -352,7 +360,7 @@ function userOf_(m) {
   const perms = {};
   const matrix = readPerms_();
   PERMS.forEach(p => { perms[p[0]] = owner ? true : !!matrix[role === ROLE.MANAGER ? 'manager' : 'reviewer'][p[0]]; });
-  return { chat: m.chat, name: m.name, role: role, isOwner: owner, perms: perms };
+  return { chat: m.chat, name: m.name, role: role, isOwner: owner, perms: perms, projects: owner ? [] : (m.projects || []) };
 }
 
 function need_(u, perm) {
@@ -368,8 +376,9 @@ function apiBootstrap_(u) {
     try { bot = tg_('getMe').username; props.setProperty('BOT_USERNAME', bot); } catch (e) {}
   }
   const today = todayYmd_();
+  const projs = readProjects_();
   const all = readLectures_().filter(l => l.title);
-  const lectures = (u.perms.view_all ? all : all.filter(l => l.reviewer === u.name)).reverse().map(l => lecOut_(l, today, u));
+  const visible = u.perms.view_all ? all.filter(l => sees_(u, l.project) || l.reviewer === u.name) : all.filter(l => l.reviewer === u.name);
   const canTeam = u.isOwner || u.perms.team || u.perms.view_all;
   return {
     me: u,
@@ -378,23 +387,28 @@ function apiBootstrap_(u) {
     nextWorkDay: nextWorkDay_(today, s.workDays),
     defaultDue: computeDue_(today, s.workDays),
     settings: { workDays: s.workDays, hour: s.hour, adminHour: s.adminHour },
+    projects: projs.filter(p => u.isOwner || u.perms.settings || sees_(u, p.name)).map(p => {
+      const wd = p.workDays || s.workDays;
+      return { name: p.name, item: p.item, color: p.color, workDays: p.workDays, active: p.active, mine: sees_(u, p.name),
+        nextWorkDay: nextWorkDay_(today, wd), defaultDue: computeDue_(today, wd) };
+    }),
     statuses: Object.keys(ST).map(k => ST[k]),
     reviewers: u.perms.send ? readReviewers_().map(r => r.name) : [],
-    lectures: lectures,
+    lectures: visible.reverse().map(l => lecOut_(l, today, u)),
     team: canTeam ? readTeam_().map(m => ({
       chat: m.chat, name: m.name, username: m.username, joined: ymdOf_(m.joined),
       role: m.chat === adminChat_() ? ROLE.OWNER : (m.role === ROLE.MANAGER ? ROLE.MANAGER : ROLE.REVIEWER),
-      active: m.active, notify: m.notify })) : [],
+      active: m.active, notify: m.notify, projects: m.projects })) : [],
     permsDef: PERMS.map(p => ({ key: p[0], label: p[1] })),
     permissions: (u.isOwner || u.perms.team) ? readPerms_() : null,
-    log: u.perms.view_all ? readLog_(300) : [],
+    log: u.perms.view_all ? readLog_(300).filter(a => !a.project || sees_(u, a.project)) : [],
   };
 }
 
 function lecOut_(l, today, u) {
   const due = ymdOf_(l.due);
   return {
-    id: l.id, title: l.title, file: l.file, reviewer: l.reviewer, status: l.status || ST.NEW,
+    id: l.id, title: l.title, file: l.file, reviewer: l.reviewer, status: l.status || ST.NEW, project: l.project,
     sent: ymdOf_(l.sent), due: due, done: ymdOf_(l.doneAt), reminded: !!ymdOf_(l.reminded),
     lateDays: isOpen_(l) && due && due < today ? daysBetween_(due, today) : 0,
     notes: l.notes.trim(), files: l.noteFiles.split('\n').map(x => x.trim()).filter(Boolean),
@@ -402,10 +416,15 @@ function lecOut_(l, today, u) {
   };
 }
 
-/** items: [{title, link, reviewer, due}] — كل محاضرة تتبعت الأول، ولو نجحت بس تنزل في الشيت */
+/** {project, items: [{title, link, reviewer, due}]} — كل عنصر يتبعت الأول، ولو نجح بس ينزل في الشيت */
 function apiSend_(u, args) {
   need_(u, 'send');
-  const s = getSettings_();
+  const project = String(args.project || '').trim();
+  const P = readProjects_().find(x => x.name === project);
+  if (!P) throw new Error('اختار المشروع');
+  if (!P.active) throw new Error('المشروع ده متوقّف');
+  if (!sees_(u, project)) throw new Error('المشروع ده مش من مشاريعك');
+  const wd = P.workDays || getSettings_().workDays;
   const revs = readReviewers_();
   let nextId = readLectures_().reduce((m, l) => Math.max(m, l.id), 0) + 1;
   const ok = [], bad = [];
@@ -414,15 +433,15 @@ function apiSend_(u, args) {
     if (!title && !link) return;
     const name = '«' + (title || 'بدون عنوان') + '»';
     const keep = { title: title, link: link, reviewer: it.reviewer, due: it.due };
-    if (!title) { bad.push(Object.assign(keep, { error: name + ': اكتب عنوان المحاضرة' })); return; }
+    if (!title) { bad.push(Object.assign(keep, { error: name + ': اكتب عنوان ال' + P.item })); return; }
     const rev = revs.find(r => r.name === String(it.reviewer || '').trim());
     if (!rev) { bad.push(Object.assign(keep, { error: name + ': اختار المراجع' })); return; }
-    const due = ymdOf_(it.due) || computeDue_(todayYmd_(), s.workDays);
+    const due = ymdOf_(it.due) || computeDue_(todayYmd_(), wd);
     let msg;
-    try { msg = deliver_(title, link, rev, nextId, due); }
+    try { msg = deliver_(title, link, rev, nextId, due, project); }
     catch (e) { bad.push(Object.assign(keep, { due: due, error: name + ': ' + e.message })); return; }
-    sheet_(SH.LECT).appendRow([nextId, title, link, rev.name, nowDate_(), dateOf_(due), ST.SENT, '', '', '', '', String(msg.message_id)]);
-    log_(u.name, 'أرسل للمراجعة ← ' + rev.name, title);
+    sheet_(SH.LECT).appendRow([nextId, title, link, rev.name, nowDate_(), dateOf_(due), ST.SENT, '', '', '', '', String(msg.message_id), project]);
+    log_(u.name, 'أرسل للمراجعة ← ' + rev.name, title, project);
     ok.push(name + ' ← ' + rev.name + ' (لحد ' + arDate_(due) + ')');
     nextId++;
   });
@@ -434,30 +453,31 @@ function apiSetStatus_(u, args) {
   const status = String(args.status || '');
   if (Object.keys(ST).map(k => ST[k]).indexOf(status) === -1) throw new Error('حالة مش معروفة');
   const lec = findLecture_(args.id);
+  if (!sees_(u, lec.project)) throw new Error('المشروع ده مش من مشاريعك');
   if (lec.status === status) return true;
   sheet_(SH.LECT).getRange(lec.row, L.STATUS).setValue(status);
-  log_(u.name, 'غيّر الحالة: ' + (lec.status || ST.NEW) + ' ← ' + status, lec.title);
+  log_(u.name, 'غيّر الحالة: ' + (lec.status || ST.NEW) + ' ← ' + status, lec.title, lec.project);
   return true;
 }
 
 function apiAddNote_(u, args) {
   const lec = findLecture_(args.id);
-  if (lec.reviewer !== u.name && !u.isOwner && !u.perms.status) throw new Error('المحاضرة دي مش متسجّلة باسمك');
+  if (lec.reviewer !== u.name && !u.isOwner && !(u.perms.status && sees_(u, lec.project))) throw new Error('المحاضرة دي مش متسجّلة باسمك');
   const text = String(args.text || '').trim();
   if (!text) throw new Error('اكتب الملاحظة الأول');
   if (text.length > 3000) throw new Error('الملاحظة طويلة قوي — قسّمها على أكتر من ملاحظة');
   const first = !lec.notes.trim() && !lec.noteFiles.trim();
   const old = lec.notes.trim();
   sheet_(SH.LECT).getRange(lec.row, L.NOTES).setValue((old ? old + '\n' : '') + '• ' + text);
-  if (first) log_(u.name, 'بدأ يكتب ملاحظات', lec.title);
-  managersToNotify_().filter(m => m.chat !== u.chat).forEach(m =>
-    send_(m.chat, '📝 <b>' + esc_(u.name) + '</b> — «' + esc_(lec.title) + '» <i>(من الموقع)</i>\n\n' + esc_(text)));
+  if (first) log_(u.name, 'بدأ يكتب ملاحظات', lec.title, lec.project);
+  managersToNotify_().filter(m => m.chat !== u.chat && sees_(m, lec.project)).forEach(m =>
+    send_(m.chat, '📝 <b>' + esc_(u.name) + '</b> — «' + esc_(lec.title) + '» · ' + esc_(lec.project) + ' <i>(من الموقع)</i>\n\n' + esc_(text)));
   return true;
 }
 
 function apiMarkDone_(u, args) {
   const lec = findLecture_(args.id);
-  if (lec.reviewer !== u.name && !u.isOwner && !u.perms.status) throw new Error('المحاضرة دي مش متسجّلة باسمك');
+  if (lec.reviewer !== u.name && !u.isOwner && !(u.perms.status && sees_(u, lec.project))) throw new Error('المحاضرة دي مش متسجّلة باسمك');
   if (!isOpen_(lec)) throw new Error('المحاضرة دي اتسلّمت قبل كده');
   markDone_(lec, lec.reviewer, u.name === lec.reviewer ? 'من الموقع' : 'سجّلها ' + u.name);
   return true;
@@ -501,7 +521,47 @@ function apiUpdateMember_(u, args) {
     sh.getRange(t.row, T.NOTIFY).setValue(!!args.notify);
     changes.push((args.notify ? 'شغّل' : 'قفل') + ' إشعارات «' + t.name + '»');
   }
+  if (args.projects !== undefined) {
+    if (!u.isOwner) throw new Error('تحديد مشاريع الأعضاء للمالك بس');
+    const names = readProjects_().map(x => x.name);
+    const list = (args.projects || []).map(String).filter(x => names.indexOf(x) !== -1);
+    const val = list.join('، ');
+    if (val !== t.projects.join('، ')) {
+      sh.getRange(t.row, T.PROJECTS).setValue(val);
+      changes.push('حدّد مشاريع «' + t.name + '»: ' + (list.length ? val : 'كل المشاريع'));
+    }
+  }
   changes.forEach(c => log_(u.name, c, ''));
+  return true;
+}
+
+/** إضافة/تعديل/ترتيب المشاريع. اسم جديد لمشروع قديم بيتطبّق على محاضراته وعلى أعضائه */
+function apiSaveProjects_(u, args) {
+  need_(u, 'settings');
+  const list = (args.projects || []).map(x => ({
+    name: String(x.name || '').trim(), old: String(x.old || '').trim(), item: String(x.item || '').trim() || 'محاضرة',
+    color: /^#[0-9a-f]{6}$/i.test(String(x.color || '')) ? x.color : '#2E8B85',
+    workDays: (x.workDays || []).map(Number).filter(d => d >= 0 && d <= 6), active: x.active !== false }));
+  if (!list.length) throw new Error('لازم يبقى فيه مشروع واحد على الأقل');
+  const seen = {};
+  list.forEach(x => {
+    if (!x.name) throw new Error('اسم المشروع مينفعش يبقى فاضي');
+    if (seen[x.name]) throw new Error('اسم المشروع «' + x.name + '» متكرر');
+    seen[x.name] = 1;
+  });
+  list.filter(x => x.old && x.old !== x.name).forEach(x => {
+    readLectures_().filter(l => l.project === x.old).forEach(l => sheet_(SH.LECT).getRange(l.row, L.PROJECT).setValue(x.name));
+    readTeam_().filter(m => m.projects.indexOf(x.old) !== -1).forEach(m =>
+      sheet_(SH.TEAM).getRange(m.row, T.PROJECTS).setValue(m.projects.map(y => y === x.old ? x.name : y).join('، ')));
+    log_(u.name, 'غيّر اسم المشروع من «' + x.old + '» إلى «' + x.name + '»', '', x.name);
+  });
+  const sh = sheet_(SH.PROJ);
+  const n = sh.getLastRow();
+  if (n > 1) sh.getRange(2, 1, n - 1, P_HEADERS.length).clearContent();
+  sh.getRange(2, 1, list.length, P_HEADERS.length).setValues(list.map(x =>
+    [x.name, x.item, x.color, x.workDays.map(d => DAY_NAMES[d]).join('، '), x.active]));
+  log_(u.name, 'عدّل المشاريع', '');
+  fresh_();
   return true;
 }
 
@@ -592,25 +652,26 @@ function maybeDaily_() {
 /** تنبيه المالك (مشرف المونتاج) قبل يوم الشغل بيوم: إيه اللي مستنيه بكرة */
 function adminEveJob_(today) {
   const tomorrow = addDays_(today, 1);
-  if (getSettings_().workDays.indexOf(dow_(tomorrow)) === -1 || !adminChat_()) return;
-  send_(adminChat_(), workDayText_(tomorrow));
+  if (!adminChat_()) return;
+  const projs = readProjects_().filter(p => p.active && projWorkDays_(p.name).indexOf(dow_(tomorrow)) !== -1);
+  if (!projs.length) return;
+  send_(adminChat_(), workDayText_(tomorrow, projs));
 }
 
-function workDayText_(day) {
+function workDayText_(day, projs) {
   const ls = readLectures_().filter(l => l.title);
-  const by = st => ls.filter(l => l.status === st);
-  const done = by(ST.DONE), fixed = by(ST.FIXED);
-  const open = ls.filter(isOpen_);
-  const out = ['🎬 <b>تذكير: بكرة يوم شغل — ' + arDate_(day) + '</b>', '', '<b>المطلوب بكرة:</b>'];
-
-  if (done.length) out.push('', '✂️ <b>تعديل ورندر ورفع (' + done.length + ')</b> — الملاحظات وصلت:',
-    ...done.map(l => '• «' + esc_(l.title) + '»'));
-  if (fixed.length) out.push('', '📤 <b>متعدّلة ومستنية الرفع (' + fixed.length + ')</b>',
-    ...fixed.map(l => '• «' + esc_(l.title) + '»'));
-  if (open.length) out.push('', '⏳ <b>لسه عند المراجعين (' + open.length + ')</b>',
-    ...open.map(l => '• «' + esc_(l.title) + '» — ' + esc_(l.reviewer) + ' — ' +
+  const out = ['🎬 <b>تذكير: بكرة يوم شغل — ' + arDate_(day) + '</b>'];
+  projs.forEach(p => {
+    const pl = ls.filter(l => l.project === p.name);
+    const by = st => pl.filter(l => l.status === st);
+    const done = by(ST.DONE), fixed = by(ST.FIXED), open = pl.filter(isOpen_);
+    out.push('', '━━━━━━━━━━', '📁 <b>' + esc_(p.name) + '</b>');
+    if (done.length) out.push('✂️ تعديل ورندر ورفع (' + done.length + ') — الملاحظات وصلت:', ...done.map(l => '  • «' + esc_(l.title) + '»'));
+    if (fixed.length) out.push('📤 متعدّلة ومستنية الرفع (' + fixed.length + '):', ...fixed.map(l => '  • «' + esc_(l.title) + '»'));
+    if (open.length) out.push('⏳ لسه عند المراجعين (' + open.length + '):', ...open.map(l => '  • «' + esc_(l.title) + '» — ' + esc_(l.reviewer) + ' — ' +
       (l.status === ST.LATE ? '⚠️ متأخرة' : 'لحد ' + arDate_(ymdOf_(l.due)))));
-  out.push('', '🆕 تجهيز <b>٤ محاضرات جديدة</b> وإرسالها للمراجعة.');
+    out.push('🆕 تجهيز الدفعة الجديدة وإرسالها للمراجعة.');
+  });
   return out.join('\n');
 }
 
@@ -628,23 +689,24 @@ function dailyJob_(today) {
 
     if (due === tomorrow && !l.reminded) {
       const m = send_(rev.chat,
-        '⏰ <b>تذكير</b>\nميعاد تسليم مراجعة «' + esc_(l.title) + '» <b>بكرة، ' + arDate_(due) + '</b>.\n\n' +
+        '⏰ <b>تذكير</b>\nميعاد تسليم مراجعة «' + esc_(l.title) + '» (' + esc_(l.project) + ') <b>بكرة، ' + arDate_(due) + '</b>.\n\n' +
         'لو خلصت: ابعت الملاحظات ردًّا على رسالة المحاضرة واضغط «تم التسليم».',
         { reply_markup: doneKeyboard_(l.id), reply_to: l.msgs[0] });
       sh.getRange(l.row, L.REMINDED).setValue(nowDate_());
       if (m) sh.getRange(l.row, L.MSGS).setValue(l.msgs.concat(String(m.message_id)).join(','));
     } else if (due < today) {
       sh.getRange(l.row, L.STATUS).setValue(ST.LATE);
-      log_('النظام', 'المراجعة اتأخرت عند ' + l.reviewer, l.title);
+      log_('النظام', 'المراجعة اتأخرت عند ' + l.reviewer, l.title, l.project);
       send_(rev.chat,
-        '⏳ ميعاد مراجعة «' + esc_(l.title) + '» كان ' + arDate_(due) + '.\n' +
+        '⏳ ميعاد مراجعة «' + esc_(l.title) + '» (' + esc_(l.project) + ') كان ' + arDate_(due) + '.\n' +
         'لو خلصت ابعت الملاحظات واضغط «تم التسليم»، ولو محتاج وقت قول للمسؤول.',
         { reply_markup: doneKeyboard_(l.id), reply_to: l.msgs[0] });
     }
   });
 
   fresh_();
-  if (s.workDays.indexOf(dow_(today)) !== -1) managersToNotify_().forEach(m => send_(m.chat, digestText_()));
+  const workToday = readProjects_().some(p => p.active && projWorkDays_(p.name).indexOf(dow_(today)) !== -1);
+  if (workToday) managersToNotify_().forEach(m => send_(m.chat, digestText_(m)));
   cleanSessions_();
 }
 
@@ -733,7 +795,7 @@ function onLogin_(m) {
 function onStatus_(m) {
   const member = readTeam_().find(r => r.chat === String(m.chat.id) && r.active);
   if (!member || !userOf_(member).perms.view_all) { send_(m.chat.id, 'الأمر ده للمدراء بس. جرّب /my'); return; }
-  send_(m.chat.id, digestText_());
+  send_(m.chat.id, digestText_(member));
 }
 
 function onMy_(m) {
@@ -742,7 +804,7 @@ function onMy_(m) {
   const open = readLectures_().filter(l => l.reviewer === rev.name && isOpen_(l));
   if (!open.length) { send_(m.chat.id, 'مفيش محاضرات عليك دلوقتي 👌'); return; }
   send_(m.chat.id, '📚 <b>اللي عليك دلوقتي:</b>\n' + open.map(l =>
-    '• «' + esc_(l.title) + '» — لحد ' + arDate_(ymdOf_(l.due)) + (l.status === ST.LATE ? ' ⚠️ متأخرة' : '')).join('\n'));
+    '• «' + esc_(l.title) + '» (' + esc_(l.project) + ') — لحد ' + arDate_(ymdOf_(l.due)) + (l.status === ST.LATE ? ' ⚠️ متأخرة' : '')).join('\n'));
 }
 
 function onHelp_(m) {
@@ -776,7 +838,7 @@ function onNote_(m) {
   forwardNote_(m, rev, lec);
   react_(chat, m.message_id);
   if (firstNote) {
-    log_(rev.name, 'بدأ يبعت ملاحظات', lec.title);
+    log_(rev.name, 'بدأ يبعت ملاحظات', lec.title, lec.project);
     send_(chat, 'اتسجّلت ملاحظاتك على «' + esc_(lec.title) + '» 👍\nكمّل براحتك، ولما تخلص اضغط «تم التسليم».',
       { reply_markup: isOpen_(lec) ? doneKeyboard_(lec.id) : undefined });
   }
@@ -803,9 +865,9 @@ function saveNote_(lec, m) {
 
 /** كل ملاحظة توصل المدراء اللي مفعّلين الإشعارات فورًا، باسم المراجع واسم المحاضرة */
 function forwardNote_(m, rev, lec) {
-  const to = managersToNotify_().filter(x => x.chat !== String(m.chat.id));
+  const to = managersToNotify_().filter(x => x.chat !== String(m.chat.id) && sees_(x, lec.project));
   if (!to.length) return;
-  const head = '📝 <b>' + esc_(rev.name) + '</b> — «' + esc_(lec.title) + '»';
+  const head = '📝 <b>' + esc_(rev.name) + '</b> — «' + esc_(lec.title) + '» · ' + esc_(lec.project);
   to.forEach(x => {
     if (m.text) { send_(x.chat, head + '\n\n' + esc_(m.text)); return; }
     if (m.video_note || m.sticker) {          // أنواع ما بتقبلش caption
@@ -852,37 +914,39 @@ function markDone_(lec, reviewerName, via) {
   const sh = sheet_(SH.LECT);
   sh.getRange(lec.row, L.STATUS).setValue(ST.DONE);
   sh.getRange(lec.row, L.DONE_AT).setValue(nowDate_());
-  log_(reviewerName, 'سلّم المراجعة' + (via ? ' (' + via + ')' : ''), lec.title);
+  log_(reviewerName, 'سلّم المراجعة' + (via ? ' (' + via + ')' : ''), lec.title, lec.project);
 
   const due = ymdOf_(lec.due), today = todayYmd_();
   const late = due && today > due ? daysBetween_(due, today) : 0;
   const nText = (lec.notes.match(/^• /gm) || []).length;
   const nFiles = lec.noteFiles.trim() ? lec.noteFiles.trim().split('\n').length : 0;
-  const text = '✅ <b>' + esc_(reviewerName) + '</b> سلّم مراجعة «' + esc_(lec.title) + '»' + (via ? ' <i>(' + esc_(via) + ')</i>' : '') + '\n' +
+  const text = '✅ <b>' + esc_(reviewerName) + '</b> سلّم مراجعة «' + esc_(lec.title) + '» · ' + esc_(lec.project) + (via ? ' <i>(' + esc_(via) + ')</i>' : '') + '\n' +
     (late ? '⚠️ متأخر ' + late + ' يوم' : 'في الميعاد') + ' — ' +
     (nText || nFiles ? nText + ' ملاحظة مكتوبة، ' + nFiles + ' ملف (كلها في الموقع والشيت)' : 'من غير ملاحظات');
-  managersToNotify_().forEach(m => send_(m.chat, text));
+  managersToNotify_().filter(m => sees_(m, lec.project)).forEach(m => send_(m.chat, text));
 }
 
 // ================================================================
 // الملخص
 // ================================================================
-function digestText_() {
-  const ls = readLectures_().filter(l => l.title);
+function digestText_(m) {
   const today = todayYmd_();
-  const by = st => ls.filter(l => l.status === st);
-  const done = by(ST.DONE), sent = by(ST.SENT), late = by(ST.LATE);
-  const fresh = ls.filter(l => !l.status || l.status === ST.NEW);
+  const ls = readLectures_().filter(l => l.title && (!m || sees_(m, l.project)));
   const out = ['📊 <b>ملخص المراجعة — ' + arDate_(today) + '</b>'];
-
-  if (done.length) out.push('', '✅ <b>اتسلّمت ومستنية التعديل (' + done.length + ')</b>',
-    ...done.map(l => '• «' + esc_(l.title) + '» — ' + esc_(l.reviewer)));
-  if (late.length) out.push('', '⚠️ <b>متأخرة (' + late.length + ')</b>',
-    ...late.map(l => '• «' + esc_(l.title) + '» — ' + esc_(l.reviewer) + ' — من ' + daysBetween_(ymdOf_(l.due), today) + ' يوم'));
-  if (sent.length) out.push('', '⏳ <b>عند المراجع (' + sent.length + ')</b>',
-    ...sent.map(l => '• «' + esc_(l.title) + '» — ' + esc_(l.reviewer) + ' — لحد ' + arDate_(ymdOf_(l.due))));
-  if (fresh.length) out.push('', '📝 لسه ما اتبعتتش: ' + fresh.length);
-  if (out.length === 1) out.push('', 'مفيش حاجة مفتوحة 👌');
+  let any = false;
+  readProjects_().filter(p => !m || sees_(m, p.name)).forEach(p => {
+    const pl = ls.filter(l => l.project === p.name);
+    const by = st => pl.filter(l => l.status === st);
+    const done = by(ST.DONE), sent = by(ST.SENT), late = by(ST.LATE), fixed = by(ST.FIXED);
+    if (!done.length && !sent.length && !late.length && !fixed.length) return;
+    any = true;
+    out.push('', '━━━━━━━━━━', '📁 <b>' + esc_(p.name) + '</b>');
+    if (late.length) out.push('⚠️ متأخرة (' + late.length + '):', ...late.map(l => '  • «' + esc_(l.title) + '» — ' + esc_(l.reviewer) + ' — من ' + daysBetween_(ymdOf_(l.due), today) + ' يوم'));
+    if (sent.length) out.push('⏳ عند المراجع (' + sent.length + '):', ...sent.map(l => '  • «' + esc_(l.title) + '» — ' + esc_(l.reviewer) + ' — لحد ' + arDate_(ymdOf_(l.due))));
+    if (done.length) out.push('✅ اتسلّمت ومستنية التعديل (' + done.length + '):', ...done.map(l => '  • «' + esc_(l.title) + '» — ' + esc_(l.reviewer)));
+    if (fixed.length) out.push('📤 متعدّلة ومستنية الرفع: ' + fixed.length);
+  });
+  if (!any) out.push('', 'مفيش حاجة مفتوحة في أي مشروع 👌');
   return out.join('\n');
 }
 
@@ -971,12 +1035,37 @@ function ensureSheets_() {
     set.getRange('C2:C4').setWrap(true);
   }
 
+  // المشاريع + الأعمدة الجديدة (من غير ما نمسح أي بيانات موجودة)
+  ensureProjectsSheet_(book);
+  const projSheet = book.getSheetByName(SH.PROJ);
+  lec.getRange(1, L.PROJECT).setValue('المشروع');
+  styleHeader_(lec, L_HEADERS.length);
+  lec.setColumnWidth(L.PROJECT, 120);
+  lec.getRange(2, L.PROJECT, rows).setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInRange(projSheet.getRange('A2:A'), true).setAllowInvalid(true).build());
+  team.getRange(1, T.PROJECTS).setValue(T_HEADERS[T.PROJECTS - 1]);
+  styleHeader_(team, T_HEADERS.length);
+  team.setColumnWidth(T.PROJECTS, 200);
+  log.getRange(1, 5).setValue('المشروع');
+  styleHeader_(log, 5);
+  log.setColumnWidth(5, 120);
+
   // شيل الورقة الفاضية الافتراضية
-  const mine = [SH.LECT, SH.TEAM, SH.PERM, SH.LOG, SH.SET];
+  const mine = [SH.LECT, SH.TEAM, SH.PROJ, SH.PERM, SH.LOG, SH.SET];
   book.getSheets().forEach(s => {
     if (mine.indexOf(s.getName()) === -1 && s.getLastRow() === 0 && book.getSheets().length > mine.length) book.deleteSheet(s);
   });
   book.setActiveSheet(lec);
+}
+
+function ensureProjectsSheet_(book) {
+  if (book.getSheetByName(SH.PROJ)) return;
+  const s = book.insertSheet(SH.PROJ);
+  s.getRange(1, 1, DEFAULT_PROJECTS.length + 1, P_HEADERS.length).setValues(
+    [P_HEADERS].concat(DEFAULT_PROJECTS.map(x => [x[0], x[1], x[2], '', true])));
+  styleHeader_(s, P_HEADERS.length);
+  s.getRange(2, 5, 100).setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
+  [160, 110, 90, 220, 70].forEach((w, i) => s.setColumnWidth(i + 1, w));
 }
 
 function styleHeader_(s, n) {
@@ -1002,6 +1091,7 @@ function book_() {
 let MEMO_ = {};
 function fresh_() { MEMO_ = {}; }
 function readLectures_() { return MEMO_.lect || (MEMO_.lect = readLecturesRaw_()); }
+function readProjects_() { return MEMO_.proj || (MEMO_.proj = readProjectsRaw_()); }
 function readTeam_() { return MEMO_.team || (MEMO_.team = readTeamRaw_()); }
 function readPerms_() { return MEMO_.perms || (MEMO_.perms = readPermsRaw_()); }
 /** الإعدادات بتتحفظ ٥ دقايق في الكاش (المؤقّت بيسأل عليها كل دقيقة) */
@@ -1033,9 +1123,28 @@ function readLecturesRaw_() {
       notes: String(r[L.NOTES - 1]), noteFiles: String(r[L.NOTE_FILES - 1]),
       doneAt: r[L.DONE_AT - 1], reminded: r[L.REMINDED - 1],
       msgs: String(r[L.MSGS - 1]).split(',').map(x => x.trim()).filter(Boolean),
+      project: String(r[L.PROJECT - 1] || '').trim() || defaultProject_(),
     };
   });
 }
+
+function readProjectsRaw_() {
+  let s = sheet_(SH.PROJ);
+  if (!s) { ensureProjectsSheet_(book_()); s = sheet_(SH.PROJ); }
+  const n = s.getLastRow() - 1;
+  if (n < 1) return [];
+  return s.getRange(2, 1, n, P_HEADERS.length).getValues().map((r, i) => {
+    const d = parseDays_(String(r[3] || ''));
+    return { row: i + 2, name: String(r[0]).trim(), item: String(r[1]).trim() || 'محاضرة',
+      color: /^#[0-9a-f]{6}$/i.test(String(r[2]).trim()) ? String(r[2]).trim() : '#2E8B85',
+      workDays: d.length ? d : null, active: r[4] === '' || r[4] === true || /^(true|نعم)$/i.test(String(r[4])) };
+  }).filter(p => p.name);
+}
+function defaultProject_() { const ps = readProjects_(); return ps.length ? ps[0].name : 'عام'; }
+function projectOf_(name) { return readProjects_().find(p => p.name === name) || { name: name, item: 'محاضرة', color: '#2E8B85', workDays: null, active: true }; }
+function projWorkDays_(name) { const p = projectOf_(name); return p.workDays || getSettings_().workDays; }
+/** العضو يشوف المشروع؟ (قايمة مشاريعه فاضية = كل المشاريع) */
+function sees_(m, project) { return !m.projects || !m.projects.length || m.projects.indexOf(project) !== -1; }
 
 function readTeamRaw_() {
   const s = sheet_(SH.TEAM);
@@ -1046,6 +1155,7 @@ function readTeamRaw_() {
     row: i + 2, name: String(r[0]).trim(), chat: String(r[1]).trim(), username: String(r[2]).trim(),
     joined: r[3], role: String(r[4]).trim() || ROLE.REVIEWER,
     active: r[5] === '' || bool(r[5]), notify: bool(r[6]),
+    projects: String(r[7] || '').split(/[،,]/).map(x => x.trim()).filter(Boolean),
   })).filter(m => m.name && m.chat);
 }
 
@@ -1071,8 +1181,8 @@ function readPermsRaw_() {
   return out;
 }
 
-function log_(who, what, title) {
-  try { sheet_(SH.LOG).appendRow([nowDate_(), who, what, title || '']); } catch (e) { console.error('log: ' + e.message); }
+function log_(who, what, title, project) {
+  try { sheet_(SH.LOG).appendRow([nowDate_(), who, what, title || '', project || '']); } catch (e) { console.error('log: ' + e.message); }
 }
 
 function readLog_(limit) {
@@ -1081,9 +1191,9 @@ function readLog_(limit) {
   const n = s.getLastRow() - 1;
   if (n < 1) return [];
   const from = Math.max(2, n + 2 - limit);
-  return s.getRange(from, 1, n + 2 - from, 4).getValues().reverse().map(r => ({
+  return s.getRange(from, 1, n + 2 - from, 5).getValues().reverse().map(r => ({
     at: r[0] instanceof Date ? Utilities.formatDate(r[0], TZ, 'yyyy-MM-dd HH:mm') : String(r[0]),
-    who: String(r[1]), what: String(r[2]), lecture: String(r[3]),
+    who: String(r[1]), what: String(r[2]), lecture: String(r[3]), project: String(r[4] || ''),
   }));
 }
 
