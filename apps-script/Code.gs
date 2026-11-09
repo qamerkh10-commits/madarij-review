@@ -74,7 +74,10 @@ function setup() {
 
   let me;
   try { me = tg_('getMe'); } catch (e) { ui.alert('التوكن مش صحيح: ' + e.message); return; }
-  tg_('deleteWebhook');            // البوت بيشتغل بالسحب كل دقيقة، مش بالـ webhook
+  // لو الموقع مربوط: استقبال فوري. غير كده: سحب الرسايل كل دقيقة لحد ما يتربط
+  let instant = false;
+  try { instant = enableWebhook_(); } catch (e) { instant = false; }
+  if (!instant) { tg_('deleteWebhook'); props.deleteProperty('WEBHOOK'); }
   props.setProperty('BOT_USERNAME', me.username);
   props.setProperty('SHEET_ID', SpreadsheetApp.getActiveSpreadsheet().getId());
 
@@ -122,9 +125,12 @@ function connectSite() {
     return;
   }
   props.setProperty('API_URL', api);
+  let instant = '';
+  try { instant = enableWebhook_() ? '\n\n⚡ البوت بقى بيرد فورًا.' : ''; }
+  catch (e) { instant = '\n\n⚠️ الرد الفوري ما اشتغلش (' + e.message + ')، والبوت هيفضل يرد في خلال دقيقة.'; }
   ui.alert('تم الربط ✅',
     'دلوقتي أي حد في الفريق يبعت للبوت:\n/login\nفيوصله زرار «🔐 ادخل الموقع» بحسابه وصلاحياته.\n\n' +
-    'الموقع: ' + SITE_URL, ui.ButtonSet.OK);
+    'الموقع: ' + SITE_URL + instant, ui.ButtonSet.OK);
 }
 
 function sendDigestNow() {
@@ -227,6 +233,7 @@ const API = {
 function doGet() { return json_({ ok: true, result: 'API شغال ✅' }); }
 
 function doPost(e) {
+  if (e && e.parameter && e.parameter.tg) return telegramWebhook_(e);
   const lock = LockService.getScriptLock();
   try {
     const req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
@@ -245,6 +252,42 @@ function doPost(e) {
 }
 
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
+
+// ---------- استقبال فوري من تليجرام (webhook) ----------
+/** تليجرام بيبعت كل رسالة هنا في نفس اللحظة بدل ما نسحبها كل دقيقة */
+function telegramWebhook_(e) {
+  const ok = HtmlService.createHtmlOutput('ok');   // ردّ 200 مباشر (من غير تحويل) عشان تليجرام ما يعيدش الإرسال
+  const secret = PropertiesService.getScriptProperties().getProperty('WEBHOOK_SECRET');
+  if (!secret || e.parameter.tg !== secret) return ok;
+  let u;
+  try { u = JSON.parse(e.postData.contents); } catch (err) { return ok; }
+  if (!u || u.update_id === undefined) return ok;
+  const cache = CacheService.getScriptCache();
+  if (cache.get('U_' + u.update_id)) return ok;    // نفس الرسالة اتعالجت قبل كده
+  cache.put('U_' + u.update_id, '1', 21600);
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(25000);
+    handleUpdate_(u);
+  } catch (err) {
+    console.error('webhook ' + u.update_id + ': ' + (err && err.stack));
+  } finally {
+    try { lock.releaseLock(); } catch (x) {}
+  }
+  return ok;
+}
+
+/** يشغّل الاستقبال الفوري لو الموقع مربوط (محتاج رابط الـ Web app) */
+function enableWebhook_() {
+  const props = PropertiesService.getScriptProperties();
+  const api = props.getProperty('API_URL');
+  if (!api || !props.getProperty('TOKEN')) return false;
+  let secret = props.getProperty('WEBHOOK_SECRET');
+  if (!secret) { secret = newToken_(); props.setProperty('WEBHOOK_SECRET', secret); }
+  tg_('setWebhook', { url: api + '?tg=' + secret, allowed_updates: ['message', 'callback_query'], max_connections: 5 });
+  props.setProperty('WEBHOOK', '1');
+  return true;
+}
 
 // ---------- الدخول والجلسات ----------
 function apiLogin_(token) {
@@ -494,6 +537,7 @@ function tick() {
 
 function pollUpdates_() {
   const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('WEBHOOK') === '1') return;    // الرسايل بتوصل فورًا عن طريق doPost
   const offset = Number(props.getProperty('OFFSET') || 0);
   const updates = tg_('getUpdates', { offset: offset, timeout: 0,
     allowed_updates: ['message', 'callback_query'] });
