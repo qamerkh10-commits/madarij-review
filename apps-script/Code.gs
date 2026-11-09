@@ -61,6 +61,7 @@ function onOpen() {
     .addSeparator()
     .addItem('⚙️ إعداد النظام', 'setup')
     .addItem('🔗 ربط الموقع', 'connectSite')
+    .addItem('🔄 تحديث الأوراق', 'upgradeSheets')
     .addItem('⛔ إيقاف البوت', 'stopBot')
     .addToUi();
 }
@@ -102,11 +103,20 @@ function setup() {
 
   const code = String(Math.floor(1000 + Math.random() * 9000));
   props.setProperty('ADMIN_CODE', code);
+  props.setProperty('ADMIN_CODE_AT', String(nowDate_().getTime()));   // الكود بيشتغل ٣٠ دقيقة بس
   ui.alert('تم الإعداد ✅',
     'البوت: @' + me.username + '\n\n' +
     '١) عشان تبقى المالك: افتح البوت من حسابك وابعت:\n/admin ' + code + '\n\n' +
     '٢) كل عضو في الفريق يفتح البوت ويضغط Start، فاسمه ينزل لوحده في ورقة «الفريق» كمراجع.\n\n' +
     '٣) اربط الموقع من القائمة: 🔗 ربط الموقع.', ui.ButtonSet.OK);
+}
+
+/** بعد تحديث الكود: يضيف الأوراق والأعمدة الجديدة من غير ما يلمس البيانات أو التوكن */
+function upgradeSheets() {
+  fresh_();
+  ensureSheets_();
+  CacheService.getScriptCache().remove('SETTINGS_V1');
+  SpreadsheetApp.getUi().alert('تم تحديث الأوراق ✅\nاتضافت ورقة «المشاريع» والأعمدة الجديدة، وكل البيانات زي ما هي.');
 }
 
 function stopBot() {
@@ -754,6 +764,8 @@ function onAdmin_(m, text) {
   const props = PropertiesService.getScriptProperties();
   const code = props.getProperty('ADMIN_CODE');
   const given = text.replace(/^\/admin\b/, '').trim();
+  const age = nowDate_().getTime() - Number(props.getProperty('ADMIN_CODE_AT') || 0);
+  if (code && age > 30 * 60000) { props.deleteProperty('ADMIN_CODE'); send_(m.chat.id, 'الكود ده انتهى (بيشتغل ٣٠ دقيقة بس). خد كود جديد من «⚙️ إعداد النظام» في الشيت.'); return; }
   if (!code || given !== code) { send_(m.chat.id, 'الكود غلط. خده من «⚙️ إعداد النظام» في الشيت.'); return; }
   const chat = String(m.chat.id);
   const prev = adminChat_();
