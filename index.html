@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>متابعة المراجعة</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #182D3B; --navy-2: #24445a; --teal: #2E8B85; --teal-soft: #e3f1ef;
+    --paper: #F6F1E7; --card: #ffffff; --line: #e4dccb; --ink: #1d2a33; --muted: #6b7680;
+    --ok: #1f7a4d; --ok-soft: #e2f3e9; --bad: #b3362b; --bad-soft: #fbe7e4; --warn-soft: #fff4cc;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.6 'IBM Plex Sans Arabic', Tahoma, sans-serif; }
+  header { background: var(--navy); color: #fff; padding: 18px 16px; }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 20px; font-weight: 700; }
+  header .bot { color: #bfe3df; font-size: 13px; text-decoration: none; }
+  .wrap { max-width: 920px; margin: 0 auto; }
+  main { padding: 16px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 18px; }
+  h2 { margin: 0 0 4px; font-size: 17px; color: var(--navy); }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+
+  /* نموذج الدفعة */
+  .item { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; display: grid; gap: 8px;
+          grid-template-columns: 32px 1fr 1fr; grid-template-areas: "n title title" "n link link" "n rev due"; }
+  .item .n { grid-area: n; width: 28px; height: 28px; border-radius: 50%; background: var(--navy); color: #fff;
+             display: grid; place-items: center; font-size: 13px; font-weight: 600; }
+  .item .title { grid-area: title; } .item .link { grid-area: link; } .item .rev { grid-area: rev; } .item .due { grid-area: due; }
+  .item.err { border-color: var(--bad); background: var(--bad-soft); }
+  .item .msg { grid-column: 2 / -1; color: var(--bad); font-size: 13px; }
+  .item > div { min-width: 0; }
+  .rowhead { display: flex; justify-content: space-between; align-items: center; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+  input, select { width: 100%; font: inherit; padding: 9px 10px; border: 1px solid #d6cdb9; border-radius: 9px; background: #fffdf9; color: var(--ink); }
+  input:focus, select:focus { outline: 2px solid var(--teal); outline-offset: 0; border-color: var(--teal); }
+  input[type=date] { direction: ltr; text-align: right; }
+  .hint { font-size: 12px; color: var(--teal); margin-top: 2px; min-height: 1em; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+  button { font: inherit; border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer; font-weight: 600; }
+  .primary { background: var(--teal); color: #fff; }
+  .primary:disabled { opacity: .55; cursor: wait; }
+  .ghost { background: transparent; color: var(--navy); border: 1px dashed #b9ae96; }
+  .small { padding: 6px 12px; font-size: 13px; }
+  .remove { background: none; color: var(--muted); padding: 2px 6px; font-size: 18px; line-height: 1; }
+  .result { margin-top: 12px; border-radius: 10px; padding: 10px 12px; font-size: 14px; white-space: pre-line; display: none; }
+  .result.ok { background: var(--ok-soft); color: var(--ok); display: block; }
+  .result.bad { background: var(--bad-soft); color: var(--bad); display: block; }
+
+  /* المتابعة */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+  .stat { border-radius: 10px; padding: 8px 10px; background: var(--paper); }
+  .stat b { display: block; font-size: 22px; color: var(--navy); }
+  .stat span { font-size: 12px; color: var(--muted); }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tab { background: var(--paper); color: var(--navy); padding: 6px 12px; border-radius: 99px; font-size: 13px; font-weight: 500; }
+  .tab.on { background: var(--navy); color: #fff; }
+  .lec { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+  .lec .top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+  .lec .t { font-weight: 600; }
+  .lec .meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .chip { font-size: 12px; padding: 3px 10px; border-radius: 99px; white-space: nowrap; font-weight: 500; }
+  .s-جديدة { background: #eee; } .s-عند { background: var(--warn-soft); } .s-متأخرة { background: #f8d0cc; color: #8a2219; }
+  .s-سُلّمت { background: var(--ok-soft); color: var(--ok); } .s-عُدّلت { background: #d0e4f5; color: #1d4f7a; } .s-نُشرت { background: #e2ddf3; color: #4b3d8f; }
+  details { margin-top: 8px; font-size: 14px; }
+  summary { cursor: pointer; color: var(--teal); font-weight: 500; }
+  .notes { white-space: pre-wrap; background: var(--paper); border-radius: 8px; padding: 8px 10px; margin-top: 6px; }
+  .files a { display: inline-block; margin: 6px 0 0 10px; color: var(--teal); }
+  .lec .bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+  .lec .bar a { font-size: 13px; color: var(--navy-2); }
+  .empty { text-align: center; color: var(--muted); padding: 18px; }
+  .foot { font-size: 13px; color: var(--muted); }
+  .foot code { background: var(--paper); padding: 2px 6px; border-radius: 6px; direction: ltr; display: inline-block; }
+  .loading { color: var(--muted); padding: 10px 0; }
+  .hidden { display: none !important; }
+  header .tools { display: flex; align-items: center; gap: 12px; }
+  header .gear { background: none; color: #bfe3df; padding: 2px 4px; font-size: 13px; font-weight: 500; }
+  #connect ol { padding-inline-start: 20px; margin: 8px 0 14px; color: var(--ink); }
+  #connect .field { margin-bottom: 10px; }
+
+  @media (max-width: 600px) {
+    .item { grid-template-columns: 28px 1fr; grid-template-areas: "n title" "n link" "n rev" "n due"; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>📚 متابعة المراجعة</h1>
+  <div class="tools">
+    <a class="bot" id="botLink" href="#" target="_blank" rel="noopener"></a>
+    <button class="gear hidden" id="unlinkBtn" type="button">⚙️ فك الربط</button>
+  </div>
+</div></header>
+
+<main class="wrap">
+  <section id="connect" class="hidden">
+    <h2>ربط الموقع بالبوت</h2>
+    <p class="sub">مرة واحدة بس على كل جهاز.</p>
+    <ol>
+      <li>افتح الشيت ← القائمة <b>🤖 بوت المراجعة</b> ← <b>🔗 ربط الموقع</b>.</li>
+      <li>اضغط «افتح موقع الإرسال مربوط»، والموقع هيتربط لوحده.</li>
+    </ol>
+    <p class="sub">أو الصق البيانات بإيدك:</p>
+    <div class="field"><label>رابط الـ Web app (آخره ‎/exec)</label><input id="cUrl" dir="ltr" placeholder="https://script.google.com/macros/s/…/exec"></div>
+    <div class="field"><label>مفتاح الربط</label><input id="cKey" dir="ltr" type="password"></div>
+    <button class="primary" id="cBtn" type="button">🔗 اربط</button>
+    <div class="result" id="cResult"></div>
+  </section>
+
+  <section class="app hidden">
+    <div class="rowhead">
+      <div>
+        <h2>دفعة جديدة</h2>
+        <p class="sub">حط رابط الـ PDF من Drive واختار المراجع، والبوت يبعته له على تليجرام بموعد التسليم.</p>
+      </div>
+    </div>
+    <div id="items"></div>
+    <div class="actions">
+      <button class="ghost" id="addBtn" type="button">+ محاضرة</button>
+      <button class="primary" id="sendBtn" type="button">📤 ابعت للمراجعين</button>
+    </div>
+    <div class="result" id="result"></div>
+  </section>
+
+  <section class="app hidden">
+    <div class="rowhead">
+      <h2>المتابعة</h2>
+      <button class="ghost small" id="refreshBtn" type="button">↻ تحديث</button>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="tabs" id="tabs"></div>
+    <div id="list"><div class="loading">جاري التحميل…</div></div>
+  </section>
+
+  <section class="foot app hidden" id="foot"></section>
+</main>
+
+<script>
+  var DATA = null, FILTER = 'open';
+  var DRAFT_KEY = 'review-draft-v1';
+  var DAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  var MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function arNum(n) { return String(n).replace(/\d/g, function (x) { return '٠١٢٣٤٥٦٧٨٩'[x]; }); }
+  function arDate(ymd) {
+    if (!ymd) return '';
+    var p = ymd.split('-').map(Number), d = new Date(Date.UTC(p[0], p[1] - 1, p[2], 10));
+    return DAYS[d.getUTCDay()] + ' ' + arNum(d.getUTCDate()) + ' ' + MONTHS[d.getUTCMonth()];
+  }
+  // ---------- الربط بالـ API (Apps Script) ----------
+  var CFG_KEY = 'review-api-v1', CFG = null;
+  function getCfg() { try { return JSON.parse(localStorage.getItem(CFG_KEY) || 'null'); } catch (e) { return null; } }
+  function setCfg(c) { CFG = c; try { c ? localStorage.setItem(CFG_KEY, JSON.stringify(c)) : localStorage.removeItem(CFG_KEY); } catch (e) {} }
+
+  function call(fn, args) {
+    if (!CFG) return Promise.reject(new Error('الموقع مش مربوط'));
+    return fetch(CFG.url, { method: 'POST', body: JSON.stringify({ key: CFG.key, action: fn, args: args || [] }) })
+      .then(function (r) { return r.json(); })
+      .catch(function () { throw new Error('مش قادر أوصل للسكريبت — اتأكد من رابط الـ Web app وإن الـ Deploy على Anyone'); })
+      .then(function (j) { if (!j.ok) throw new Error(j.error || 'خطأ'); return j.result; });
+  }
+  function run(fn, args, ok, fail) {
+    call(fn, args).then(ok, fail || function (e) { alert('حصلت مشكلة: ' + (e && e.message || e)); });
+  }
+
+  // ---------- نموذج الدفعة ----------
+  function blank() { return { title: '', link: '', reviewer: '', due: DATA ? DATA.defaultDue : '' }; }
+  function readForm() {
+    return Array.prototype.map.call(document.querySelectorAll('.item'), function (el) {
+      return { title: el.querySelector('.title input').value, link: el.querySelector('.link input').value,
+               reviewer: el.querySelector('.rev select').value, due: el.querySelector('.due input').value,
+               error: el.getAttribute('data-error') || '' };
+    });
+  }
+  function saveDraft() { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(readForm())); } catch (e) {} }
+  function loadDraft() { try { var d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); return Array.isArray(d) && d.length ? d : null; } catch (e) { return null; } }
+
+  function renderItems(items) {
+    var revs = DATA ? DATA.reviewers : [];
+    $('items').innerHTML = items.map(function (it, i) {
+      var opts = '<option value="">— اختار المراجع —</option>' + revs.map(function (r) {
+        return '<option' + (r === it.reviewer ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('');
+      return '<div class="item' + (it.error ? ' err' : '') + '" data-error="' + esc(it.error || '') + '">' +
+        '<div class="n">' + arNum(i + 1) + '</div>' +
+        '<div class="title"><div class="rowhead"><label>عنوان المحاضرة</label>' +
+          '<button class="remove" type="button" title="شيل" data-rm="' + i + '">×</button></div>' +
+          '<input value="' + esc(it.title) + '" placeholder="مثلًا: المجلس ١٩ — الشركة"></div>' +
+        '<div class="link"><label>رابط ملف الـ PDF على Drive</label>' +
+          '<input dir="ltr" value="' + esc(it.link) + '" placeholder="https://drive.google.com/file/d/…"></div>' +
+        '<div class="rev"><label>المراجع</label><select>' + opts + '</select></div>' +
+        '<div class="due"><label>موعد التسليم</label><input type="date" value="' + esc(it.due || '') + '">' +
+          '<div class="hint">' + esc(arDate(it.due)) + '</div></div>' +
+        (it.error ? '<div class="msg">' + esc(it.error) + '</div>' : '') +
+      '</div>';
+    }).join('');
+  }
+
+  $('items').addEventListener('input', function (e) {
+    if (e.target.type === 'date') e.target.nextElementSibling.textContent = arDate(e.target.value);
+    saveDraft();
+  });
+  $('items').addEventListener('change', saveDraft);
+  $('items').addEventListener('click', function (e) {
+    var i = e.target.getAttribute('data-rm');
+    if (i === null) return;
+    var items = readForm(); items.splice(Number(i), 1);
+    renderItems(items.length ? items : [blank()]); saveDraft();
+  });
+  $('addBtn').onclick = function () { var items = readForm(); items.push(blank()); renderItems(items); saveDraft(); };
+
+  $('sendBtn').onclick = function () {
+    var items = readForm().filter(function (x) { return x.title.trim() || x.link.trim(); });
+    if (!items.length) { showResult('bad', 'اكتب محاضرة واحدة على الأقل.'); return; }
+    var btn = $('sendBtn'); btn.disabled = true; btn.textContent = '⏳ جاري الإرسال…';
+    run('webSend', [items], function (res) {
+      btn.disabled = false; btn.textContent = '📤 ابعت للمراجعين';
+      var txt = '';
+      if (res.ok.length) txt += '✅ اتبعت (' + arNum(res.ok.length) + '):\n' + res.ok.join('\n');
+      if (res.bad.length) txt += (txt ? '\n\n' : '') + '⚠️ ما اتبعتش (' + arNum(res.bad.length) + ') — صلّحها تحت وابعت تاني.';
+      showResult(res.bad.length ? 'bad' : 'ok', txt);
+      renderItems(res.bad.length ? res.bad.map(function (b) { return { title: b.title, link: b.link, reviewer: b.reviewer, due: b.due || DATA.defaultDue, error: b.error }; }) : fresh4());
+      saveDraft();
+      load();
+    }, function (e) {
+      btn.disabled = false; btn.textContent = '📤 ابعت للمراجعين';
+      showResult('bad', 'حصلت مشكلة: ' + (e && e.message || e));
+    });
+  };
+  function showResult(kind, txt) { var r = $('result'); r.className = 'result ' + kind; r.textContent = txt; }
+  function fresh4() { return [blank(), blank(), blank(), blank()]; }
+
+  // ---------- المتابعة ----------
+  var TABS = [
+    { k: 'open', t: 'المفتوحة', f: function (l) { return l.status === 'عند المراجع' || l.status === 'متأخرة'; } },
+    { k: 'todo', t: 'مستنية التعديل', f: function (l) { return l.status === 'سُلّمت'; } },
+    { k: 'render', t: 'مستنية النشر', f: function (l) { return l.status === 'عُدّلت'; } },
+    { k: 'all', t: 'الكل', f: function () { return true; } },
+  ];
+  var NEXT = { 'سُلّمت': ['عُدّلت', '✓ اتعدّلت'], 'عُدّلت': ['نُشرت', '✓ اتنشرت على يوتيوب'] };
+
+  function renderTracking() {
+    var ls = DATA.lectures;
+    function count(f) { return ls.filter(f).length; }
+    $('stats').innerHTML = [
+      ['عند المراجع', count(function (l) { return l.status === 'عند المراجع'; })],
+      ['متأخرة', count(function (l) { return l.status === 'متأخرة'; })],
+      ['مستنية التعديل', count(function (l) { return l.status === 'سُلّمت'; })],
+      ['مستنية النشر', count(function (l) { return l.status === 'عُدّلت'; })],
+    ].map(function (s) { return '<div class="stat"><b>' + arNum(s[1]) + '</b><span>' + s[0] + '</span></div>'; }).join('');
+
+    $('tabs').innerHTML = TABS.map(function (t) {
+      return '<button type="button" class="tab' + (t.k === FILTER ? ' on' : '') + '" data-tab="' + t.k + '">' + t.t + ' (' + arNum(count(t.f)) + ')</button>';
+    }).join('');
+
+    var tab = TABS.filter(function (t) { return t.k === FILTER; })[0];
+    var shown = ls.filter(tab.f);
+    if (!shown.length) { $('list').innerHTML = '<div class="empty">مفيش حاجة هنا 👌</div>'; return; }
+    $('list').innerHTML = shown.map(function (l) {
+      var cls = 's-' + l.status.split(' ')[0];
+      var meta = esc(l.reviewer || '—') +
+        (l.due ? ' · التسليم ' + esc(l.dueAr) : '') +
+        (l.lateDays ? ' · <b style="color:var(--bad)">متأخرة ' + arNum(l.lateDays) + ' يوم</b>' : '') +
+        (l.doneAr && (l.status === 'سُلّمت' || l.status === 'عُدّلت' || l.status === 'نُشرت') ? ' · اتسلّمت ' + esc(l.doneAr) : '');
+      var nNotes = l.notes ? (l.notes.match(/^• /gm) || []).length : 0;
+      var notes = (nNotes || l.files.length) ?
+        '<details><summary>الملاحظات (' + arNum(nNotes) + ' مكتوبة' + (l.files.length ? '، ' + arNum(l.files.length) + ' ملف' : '') + ')</summary>' +
+          (l.notes ? '<div class="notes">' + esc(l.notes) + '</div>' : '') +
+          (l.files.length ? '<div class="files">' + l.files.map(function (f, i) {
+            return /^https?:/.test(f) ? '<a href="' + esc(f) + '" target="_blank">📎 ملف ' + arNum(i + 1) + '</a>' : '<span>' + esc(f) + '</span>'; }).join('') + '</div>' : '') +
+        '</details>' : '';
+      var next = NEXT[l.status];
+      return '<div class="lec"><div class="top"><div><div class="t">' + esc(l.title) + '</div><div class="meta">' + meta + '</div></div>' +
+        '<span class="chip ' + cls + '">' + esc(l.status) + '</span></div>' + notes +
+        '<div class="bar">' +
+          (next ? '<button type="button" class="primary small" data-id="' + l.id + '" data-st="' + next[0] + '">' + next[1] + '</button>' : '') +
+          (/^https?:/.test(l.file) ? '<a href="' + esc(l.file) + '" target="_blank">فتح الـ PDF</a>' : '') +
+        '</div></div>';
+    }).join('');
+  }
+
+  $('tabs').addEventListener('click', function (e) {
+    var k = e.target.getAttribute('data-tab'); if (!k) return;
+    FILTER = k; renderTracking();
+  });
+  $('list').addEventListener('click', function (e) {
+    var id = e.target.getAttribute('data-id'); if (!id) return;
+    var st = e.target.getAttribute('data-st');
+    e.target.disabled = true; e.target.textContent = '…';
+    run('webSetStatus', [Number(id), st], function () {
+      DATA.lectures.forEach(function (l) { if (l.id === Number(id)) l.status = st; });
+      renderTracking();
+    });
+  });
+  $('refreshBtn').onclick = function () { load(); };
+
+  function renderFoot() {
+    var link = DATA.bot ? 'https://t.me/' + DATA.bot : '';
+    $('botLink').textContent = DATA.bot ? '@' + DATA.bot : '';
+    $('botLink').href = link || '#';
+    $('foot').innerHTML = '<b>المراجعون المسجّلون (' + arNum(DATA.reviewers.length) + '):</b> ' +
+      (DATA.reviewers.length ? DATA.reviewers.map(esc).join('، ') : 'لسه مفيش') +
+      (link ? '<br>مراجع جديد؟ يفتح الرابط ده ويضغط Start، واسمه هيظهر هنا: <code>' + esc(link) + '</code>' : '');
+  }
+
+  function load() {
+    run('webGetData', [], function (d) {
+      var first = !DATA;
+      DATA = d;
+      if (first) renderItems(loadDraft() || fresh4());
+      else {                                   // حدّث قائمة المراجعين من غير ما تمسح اللي مكتوب
+        var items = readForm(); renderItems(items.length ? items : fresh4());
+      }
+      renderTracking(); renderFoot();
+    }, function (e) { $('list').innerHTML = '<div class="empty">مش قادر أحمّل البيانات: ' + esc(e && e.message || e) + '</div>'; });
+  }
+  function showApp(on) {
+    $('connect').classList.toggle('hidden', on);
+    Array.prototype.forEach.call(document.querySelectorAll('.app'), function (s) { s.classList.toggle('hidden', !on); });
+    $('unlinkBtn').classList.toggle('hidden', !on);
+  }
+  function tryConnect(url, key, done) {
+    url = String(url || '').trim(); key = String(key || '').trim();
+    if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)) { done('الرابط لازم يبدأ بـ https://script.google.com/macros/s/ وآخره /exec'); return; }
+    var prev = CFG; CFG = { url: url, key: key };
+    call('webGetData').then(function () { setCfg(CFG); done(null); }, function (e) { CFG = prev; done(e.message); });
+  }
+  $('cBtn').onclick = function () {
+    var b = $('cBtn'); b.disabled = true; b.textContent = '⏳ جاري الربط…';
+    tryConnect($('cUrl').value, $('cKey').value, function (err) {
+      b.disabled = false; b.textContent = '🔗 اربط';
+      if (err) { var r = $('cResult'); r.className = 'result bad'; r.textContent = err; return; }
+      showApp(true); load();
+    });
+  };
+  $('unlinkBtn').onclick = function () {
+    if (!confirm('تفك ربط الموقع على الجهاز ده؟')) return;
+    setCfg(null); DATA = null; showApp(false);
+  };
+
+  (function init() {
+    var m = /#connect=([^&]+)/.exec(location.hash);
+    if (m) {
+      history.replaceState(null, '', location.pathname + location.search);   // شيل المفتاح من شريط العنوان
+      var parts = decodeURIComponent(m[1]).split('|');
+      showApp(false);
+      var r = $('cResult'); r.className = 'result ok'; r.textContent = '⏳ جاري الربط…';
+      tryConnect(parts[0], parts[1], function (err) {
+        if (err) { r.className = 'result bad'; r.textContent = err; $('cUrl').value = parts[0] || ''; return; }
+        r.className = 'result'; showApp(true); load();
+      });
+      return;
+    }
+    CFG = getCfg();
+    if (CFG) { showApp(true); load(); } else showApp(false);
+  })();
+</script>
+</body>
+</html>
