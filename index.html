@@ -242,6 +242,7 @@ table.tbl { width: 100%; border-collapse: collapse; }
 .toast { background: var(--navy); color: #fff; padding: 11px 16px; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.2); font-size: 14px; max-width: 360px; animation: up .2s ease; }
 .toast.bad { background: var(--bad); }
 @keyframes up { from { transform: translateY(8px); opacity: 0; } }
+[data-act=refresh].syncing svg { animation: sp 1s linear infinite; }
 .loading { padding: 60px 0; text-align: center; color: var(--muted); }
 .spin { width: 26px; height: 26px; border: 3px solid var(--line); border-top-color: var(--teal); border-radius: 50%; animation: sp 1s linear infinite; margin: 0 auto 10px; }
 @keyframes sp { to { transform: rotate(360deg); } }
@@ -383,6 +384,11 @@ function me() { return D.me; }
 function can(p) { return D.me.isOwner || !!D.me.perms[p]; }
 
 function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }
+var CACHE = 'madarij-review-data-v2';
+function saveCache() { try { localStorage.setItem(CACHE, JSON.stringify({ s: S.session.slice(0, 12), d: D })); } catch (e) {} }
+function loadCache() { try { var c = JSON.parse(localStorage.getItem(CACHE) || 'null'); return c && c.s === S.session.slice(0, 12) ? c.d : null; } catch (e) { return null; } }
+function dropCache() { try { localStorage.removeItem(CACHE); } catch (e) {} }
+function syncing(on) { var b = document.querySelector('[data-act=refresh]'); if (b) b.classList.toggle('syncing', on); }
 function load() { try { var x = JSON.parse(localStorage.getItem(STORE) || 'null'); if (x) S = x; } catch (e) {} }
 
 function toast(msg, bad) {
@@ -404,20 +410,25 @@ function api(action, args) {
     .then(function (r) { return r.json(); }, function () { throw new Error('مش قادر أوصل للسيرفر — اتأكد من النت وحاول تاني'); })
     .then(function (j) {
       if (!j.ok) {
-        if (j.auth) { S.session = ''; save(); showLogin(j.error); }
+        if (j.auth) { S.session = ''; save(); dropCache(); showLogin(j.error); }
         throw new Error(j.error || 'حصل خطأ');
       }
+      if (j.boot) { D = j.boot; saveCache(); }   // العمليات بترجّع البيانات الجديدة في نفس الرد
       return j.result;
     });
 }
 
 function refresh(silent) {
+  syncing(true);
   return api('bootstrap').then(function (d) {
-    D = d; S.bot = d.bot || S.bot; S.name = d.me.name; save();
+    syncing(false);
+    D = d; S.bot = d.bot || S.bot; S.name = d.me.name; save(); saveCache();
+    var ae = document.activeElement;
+    if (silent && D && ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName) && $('view').contains(ae)) return;  // ما نقاطعش اللي بيكتب
     if (!PAGE || !allowed(PAGE)) PAGE = d.me.perms.view_all ? 'dash' : 'mine';
     render();
     if (!silent) {}
-  }).catch(function (e) { if (S.session) toast(e.message, true); });
+  }).catch(function (e) { syncing(false); if (S.session) toast(e.message, true); });
 }
 
 // ================= الصفحات =================
@@ -769,7 +780,7 @@ document.addEventListener('click', function (e) {
     case 'refresh': busy(a, true, '…'); refresh().then(function () { busy(a, false); toast('اتحدّث ✓'); }); break;
     case 'logout':
       if (!confirm('تخرج من الموقع على الجهاز ده؟')) return;
-      api('logout').catch(function () {}); S.session = ''; save(); D = null; showLogin(); break;
+      api('logout').catch(function () {}); S.session = ''; save(); dropCache(); D = null; showLogin(); break;
     case 'filter': F.st = a.dataset.st; F.rev = ''; F.q = ''; go('lectures'); break;
     case 'seg': F.st = a.dataset.st; render(); break;
     case 'rev-lecs': F.rev = a.dataset.name; F.st = 'all'; F.q = ''; go('lectures'); break;
@@ -783,8 +794,9 @@ document.addEventListener('click', function (e) {
       busy(a, true);
       api('addNote', { id: Number(id), text: text }).then(function () {
         toast('اتضافت الملاحظة ووصلت للمدراء ✓');
-        return refresh(true);
-      }).then(function () { if ($('drawer').dataset.id) openLecture(id); })
+        render();
+        if ($('drawer').dataset.id) openLecture(id);
+      })
         .catch(function (er) { busy(a, false); toast(er.message, true); });
       break;
     }
@@ -792,14 +804,14 @@ document.addEventListener('click', function (e) {
       if (!confirm('تأكيد تسليم المراجعة؟')) return;
       busy(a, true);
       api('markDone', { id: Number(a.dataset.id) }).then(function () {
-        toast('اتسجّل التسليم ✓ — جزاك الله خيرًا'); closeAll(); return refresh(true);
+        toast('اتسجّل التسليم ✓ — جزاك الله خيرًا'); closeAll(); render();
       }).catch(function (er) { busy(a, false); toast(er.message, true); });
       break;
     }
     case 'setst': {
       busy(a, true);
       api('setStatus', { id: Number(a.dataset.id), status: $('stSel').value }).then(function () {
-        toast('اتغيّرت الحالة ✓'); closeAll(); return refresh(true);
+        toast('اتغيّرت الحالة ✓'); closeAll(); render();
       }).catch(function (er) { busy(a, false); toast(er.message, true); });
       break;
     }
@@ -817,7 +829,6 @@ document.addEventListener('click', function (e) {
         drawItems(res.bad.length ? res.bad.map(function (b) { return { title: b.title, link: b.link, reviewer: b.reviewer, due: b.due || D.defaultDue, error: b.error }; }) : [blank(), blank(), blank(), blank()]);
         saveDraft();
         $('sendResult').innerHTML = '<div class="result ' + (res.bad.length ? 'bad' : 'ok') + '">' + esc(txt) + '</div>';
-        return api('bootstrap').then(function (d) { D = d; });
       }).catch(function (er) { busy(a, false); toast(er.message, true); });
       break;
     }
@@ -825,7 +836,7 @@ document.addEventListener('click', function (e) {
       var m = { manager: {}, reviewer: {} };
       document.querySelectorAll('[data-perm]').forEach(function (c) { m[c.dataset.perm][c.dataset.key] = c.checked; });
       busy(a, true);
-      api('setPermissions', { matrix: m }).then(function () { busy(a, false); toast('اتحفظت الصلاحيات ✓'); return refresh(true); })
+      api('setPermissions', { matrix: m }).then(function () { busy(a, false); toast('اتحفظت الصلاحيات ✓'); render(); })
         .catch(function (er) { busy(a, false); toast(er.message, true); });
       break;
     }
@@ -833,7 +844,7 @@ document.addEventListener('click', function (e) {
       var wd = Array.prototype.filter.call(document.querySelectorAll('[name=wd]'), function (c) { return c.checked; }).map(function (c) { return Number(c.value); });
       busy(a, true);
       api('saveSettings', { workDays: wd, hour: Number($('hour').value), adminHour: Number($('adminHour').value) })
-        .then(function () { busy(a, false); toast('اتحفظت الإعدادات ✓'); return refresh(true); })
+        .then(function () { busy(a, false); toast('اتحفظت الإعدادات ✓'); render(); })
         .catch(function (er) { busy(a, false); toast(er.message, true); });
       break;
     }
@@ -857,8 +868,8 @@ document.addEventListener('change', function (e) {
     var f = t.dataset.mem;
     args[f] = t.type === 'checkbox' ? t.checked : t.value;
     t.disabled = true;
-    api('updateMember', args).then(function () { toast('اتحفظ ✓'); return refresh(true); })
-      .catch(function (er) { toast(er.message, true); refresh(true); });
+    api('updateMember', args).then(function () { toast('اتحفظ ✓'); render(); })
+      .catch(function (er) { toast(er.message, true); render(); });
   }
 });
 
@@ -896,7 +907,12 @@ function init() {
     return;
   }
   var pm = /#\/(\w+)/.exec(h); if (pm) PAGE = pm[1];
-  if (S.api && S.session) { showApp(); refresh(); } else showLogin();
+  if (S.api && S.session) {
+    showApp();
+    var c = loadCache();
+    if (c) { D = c; if (!PAGE || !allowed(PAGE)) PAGE = D.me.perms.view_all ? 'dash' : 'mine'; render(); refresh(true); }   // عرض فوري لآخر بيانات، والتحديث في الخلفية
+    else refresh();
+  } else showLogin();
 }
 
 setInterval(function () {

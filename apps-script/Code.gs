@@ -60,6 +60,7 @@ function onOpen() {
 }
 
 function setup() {
+  fresh_();
   const ui = SpreadsheetApp.getUi();
   const props = PropertiesService.getScriptProperties();
   let token = props.getProperty('TOKEN');
@@ -111,6 +112,7 @@ function stopBot() {
 
 /** بياخد رابط الـ Web app مرة واحدة، وبعدها أي عضو يدخل الموقع بـ /login من البوت */
 function connectSite() {
+  fresh_();
   const ui = SpreadsheetApp.getUi();
   const props = PropertiesService.getScriptProperties();
   let api = props.getProperty('API_URL') || '';
@@ -134,6 +136,7 @@ function connectSite() {
 }
 
 function sendDigestNow() {
+  fresh_();
   const to = managersToNotify_();
   if (!to.length) {
     SpreadsheetApp.getUi().alert('لسه مفيش مالك. ابعت للبوت /admin والكود اللي ظهر في الإعداد.');
@@ -147,6 +150,7 @@ function sendDigestNow() {
 // إرسال المحاضرات من الشيت (الصفوف اللي حالتها «جديدة»)
 // ================================================================
 function sendNewLectures() {
+  fresh_();
   const ui = SpreadsheetApp.getUi();
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -232,22 +236,31 @@ const API = {
 
 function doGet() { return json_({ ok: true, result: 'API شغال ✅' }); }
 
+// العمليات اللي بتكتب: بتاخد قفل، وبترجّع البيانات الجديدة في نفس الرد (من غير رحلة تانية)
+const API_WRITES = { send: 1, setStatus: 1, addNote: 1, markDone: 1, updateMember: 1, setPermissions: 1, saveSettings: 1 };
+
 function doPost(e) {
+  fresh_();
   if (e && e.parameter && e.parameter.tg) return telegramWebhook_(e);
-  const lock = LockService.getScriptLock();
   try {
     const req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
-    lock.waitLock(20000);
     if (req.action === 'login') return json_({ ok: true, result: apiLogin_(String(req.token || '')) });
-    const user = sessionUser_(String(req.session || ''));
+    const ses = String(req.session || '');
+    const user = sessionUser_(ses);
     if (!user) return json_({ ok: false, auth: true, error: 'انتهت الجلسة — ابعت /login للبوت وادخل تاني' });
     const fn = API[req.action];
     if (!fn) return json_({ ok: false, error: 'طلب مش معروف' });
-    return json_({ ok: true, result: fn(user, req.args || {}, String(req.session)) });
+    if (!API_WRITES[req.action]) return json_({ ok: true, result: fn(user, req.args || {}, ses) });
+
+    const lock = LockService.getScriptLock();
+    let result;
+    lock.waitLock(20000);
+    try { result = fn(user, req.args || {}, ses); } finally { lock.releaseLock(); }
+    fresh_();
+    const u2 = sessionUser_(ses);
+    return json_({ ok: true, result: result, boot: u2 ? apiBootstrap_(u2) : null });
   } catch (err) {
     return json_({ ok: false, error: err.message });
-  } finally {
-    try { lock.releaseLock(); } catch (e) {}
   }
 }
 
@@ -265,14 +278,16 @@ function telegramWebhook_(e) {
   const cache = CacheService.getScriptCache();
   if (cache.get('U_' + u.update_id)) return ok;    // نفس الرسالة اتعالجت قبل كده
   cache.put('U_' + u.update_id, '1', 21600);
-  const lock = LockService.getScriptLock();
+  // الأوامر اللي بتقرا بس (/login /my /help /status) بترد على طول من غير قفل
+  const readOnly = u.message && /^\/(login|my|help|status)\b/.test((u.message.text || '').trim());
+  const lock = readOnly ? null : LockService.getScriptLock();
   try {
-    lock.waitLock(25000);
+    if (lock) lock.waitLock(25000);
     handleUpdate_(u);
   } catch (err) {
     console.error('webhook ' + u.update_id + ': ' + (err && err.stack));
   } finally {
-    try { lock.releaseLock(); } catch (x) {}
+    if (lock) try { lock.releaseLock(); } catch (x) {}
   }
   return ok;
 }
@@ -499,6 +514,7 @@ function apiSetPermissions_(u, args) {
     sh.getRange(i + 2, 4).setValue(!!(m.reviewer && m.reviewer[p[0]]));
   });
   log_(u.name, 'عدّل الصلاحيات', '');
+  fresh_();
   return readPerms_();
 }
 
@@ -525,6 +541,9 @@ function findLecture_(id) {
 // المؤقّت: كل دقيقة يسحب رسائل البوت، ومرة في اليوم يبعت التنبيهات
 // ================================================================
 function tick() {
+  fresh_();
+  // في وضع الاستقبال الفوري: المؤقّت مالوش شغل غير التنبيهات اليومية، فما يقفلش النظام من غير داعي
+  if (PropertiesService.getScriptProperties().getProperty('WEBHOOK') === '1' && !dailyDue_()) return;
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) return;
   try {
@@ -545,6 +564,14 @@ function pollUpdates_() {
     props.setProperty('OFFSET', String(u.update_id + 1));   // قبل المعالجة: الرسالة المعطوبة ما تتكررش
     try { handleUpdate_(u); } catch (e) { console.error('update ' + u.update_id + ': ' + e.stack); }
   });
+}
+
+function dailyDue_() {
+  const props = PropertiesService.getScriptProperties();
+  const now = nowDate_(), today = ymdOf_(now), hour = Number(Utilities.formatDate(now, TZ, 'H'));
+  const s = getSettings_();
+  return (props.getProperty('DAILY') !== today && hour >= s.hour) ||
+         (props.getProperty('ADMIN_EVE') !== today && hour >= s.adminHour);
 }
 
 function maybeDaily_() {
@@ -616,6 +643,7 @@ function dailyJob_(today) {
     }
   });
 
+  fresh_();
   if (s.workDays.indexOf(dow_(today)) !== -1) managersToNotify_().forEach(m => send_(m.chat, digestText_()));
   cleanSessions_();
 }
@@ -650,6 +678,7 @@ function onStart_(m, payload) {
   const full = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ').trim() || ('عضو ' + chat);
   const name = uniqueName_(full);
   sheet_(SH.TEAM).appendRow([name, chat, m.from.username ? '@' + m.from.username : '', nowDate_(), ROLE.REVIEWER, true, false]);
+  fresh_();
   log_(name, 'انضم للفريق', '');
   send_(chat, 'أهلًا ' + esc_(name) + ' 👋\nاتسجّلت في نظام المراجعة ✅\n' +
     'أي محاضرة عليك مراجعتها هتوصلك هنا كملف PDF بميعاد تسليمها، وهيوصلك تذكير قبل الميعاد بيوم.\n\n' +
@@ -674,12 +703,14 @@ function onAdmin_(m, text) {
   if (!team.some(x => x.chat === chat)) {
     const full = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ').trim() || 'المالك';
     sh.appendRow([uniqueName_(full), chat, m.from.username ? '@' + m.from.username : '', nowDate_(), ROLE.OWNER, true, true]);
+    fresh_();
     team = readTeam_();
   }
   team.forEach(x => {
     if (x.chat === chat) { sh.getRange(x.row, T.ROLE).setValue(ROLE.OWNER); sh.getRange(x.row, T.ACTIVE).setValue(true); sh.getRange(x.row, T.NOTIFY).setValue(true); }
     else if (x.chat === prev || x.role === ROLE.OWNER) sh.getRange(x.row, T.ROLE).setValue(ROLE.MANAGER);
   });
+  fresh_();
   log_(readTeam_().find(x => x.chat === chat).name, 'بقى مالك النظام', '');
   send_(chat, '✅ أنت مالك النظام دلوقتي.\nهيوصلك: انضمام أي عضو، وكل ملاحظة باسم صاحبها، وكل تسليم، وملخص الصبح في أيام الشغل، وتذكير بالليل قبل يوم الشغل.\n\n' +
     '/login — ادخل الموقع وظبّط الفريق والصلاحيات\n/status — الملخص في أي وقت');
@@ -967,9 +998,26 @@ function book_() {
   if (!id) throw new Error('شغّل «⚙️ إعداد النظام» من الشيت الأول');
   return SpreadsheetApp.openById(id);
 }
-function sheet_(name) { return book_().getSheetByName(name); }
+// ---------- ذاكرة مؤقتة: كل ورقة بتتقري مرة واحدة بس في العملية الواحدة ----------
+let MEMO_ = {};
+function fresh_() { MEMO_ = {}; }
+function readLectures_() { return MEMO_.lect || (MEMO_.lect = readLecturesRaw_()); }
+function readTeam_() { return MEMO_.team || (MEMO_.team = readTeamRaw_()); }
+function readPerms_() { return MEMO_.perms || (MEMO_.perms = readPermsRaw_()); }
+/** الإعدادات بتتحفظ ٥ دقايق في الكاش (المؤقّت بيسأل عليها كل دقيقة) */
+function getSettings_() {
+  if (MEMO_.settings) return MEMO_.settings;
+  const cache = CacheService.getScriptCache();
+  const hit = cache.get('SETTINGS_V1');
+  if (hit) return (MEMO_.settings = JSON.parse(hit));
+  MEMO_.settings = getSettingsRaw_();
+  cache.put('SETTINGS_V1', JSON.stringify(MEMO_.settings), 300);
+  return MEMO_.settings;
+}
 
-function readLectures_() {
+function sheet_(name) { return (MEMO_.book || (MEMO_.book = book_())).getSheetByName(name); }
+
+function readLecturesRaw_() {
   const s = sheet_(SH.LECT);
   const n = s.getLastRow() - 1;
   if (n < 1) return [];
@@ -989,7 +1037,7 @@ function readLectures_() {
   });
 }
 
-function readTeam_() {
+function readTeamRaw_() {
   const s = sheet_(SH.TEAM);
   const n = s.getLastRow() - 1;
   if (n < 1) return [];
@@ -1010,7 +1058,7 @@ function managersToNotify_() {
   return readTeam_().filter(m => m.active && m.notify && (m.chat === owner || m.role === ROLE.MANAGER || m.role === ROLE.OWNER));
 }
 
-function readPerms_() {
+function readPermsRaw_() {
   const out = { manager: {}, reviewer: {} };
   PERMS.forEach(p => { out.manager[p[0]] = p[2]; out.reviewer[p[0]] = p[3]; });
   const s = sheet_(SH.PERM);
@@ -1039,7 +1087,7 @@ function readLog_(limit) {
   }));
 }
 
-function getSettings_() {
+function getSettingsRaw_() {
   const out = { workDays: [6, 3], hour: 9, adminHour: 20 };
   const s = sheet_(SH.SET);
   if (!s || s.getLastRow() < 2) return out;
@@ -1059,6 +1107,8 @@ function setSetting_(key, value) {
   const i = keys.indexOf(key);
   if (i === -1) s.appendRow([key, value, '']);
   else s.getRange(i + 2, 2).setValue(value);
+  delete MEMO_.settings;
+  CacheService.getScriptCache().remove('SETTINGS_V1');
 }
 
 function parseDays_(text) {
