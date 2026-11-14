@@ -14,10 +14,10 @@ const SH = { LECT: 'المحاضرات', TEAM: 'الفريق', PROJ: 'المشا
 
 // أعمدة ورقة المحاضرات (1 = A)
 const L = { ID: 1, TITLE: 2, FILE: 3, REVIEWER: 4, SENT: 5, DUE: 6, STATUS: 7,
-            NOTES: 8, NOTE_FILES: 9, DONE_AT: 10, REMINDED: 11, MSGS: 12, PROJECT: 13 };
+            NOTES: 8, NOTE_FILES: 9, DONE_AT: 10, REMINDED: 11, MSGS: 12, PROJECT: 13, RECEIVED: 14 };
 const L_HEADERS = ['الرقم', 'عنوان المحاضرة', 'ملف PDF (رابط Drive)', 'المراجع',
   'تاريخ الإرسال', 'موعد التسليم', 'الحالة', 'ملاحظات المراجع', 'ملفات الملاحظات',
-  'تاريخ التسليم', 'تنبيه قبلها بيوم', '(داخلي) رسائل تليجرام', 'المشروع'];
+  'تاريخ التسليم', 'تنبيه قبلها بيوم', '(داخلي) رسائل تليجرام', 'المشروع', 'استلم المراجع'];
 
 // أعمدة ورقة الفريق
 const T = { NAME: 1, CHAT: 2, USER: 3, JOINED: 4, ROLE: 5, ACTIVE: 6, NOTIFY: 7, PROJECTS: 8 };
@@ -28,7 +28,14 @@ const P_HEADERS = ['المشروع', 'اسم العنصر', 'اللون', 'أي�
 const DEFAULT_PROJECTS = [
   ['أخصر', 'محاضرة', '#2E8B85'], ['إناسة', 'حلقة', '#7B68C8'], ['مقدمة', 'محاضرة', '#D08A2E'],
   ['الروض', 'محاضرة', '#3B7FC0'], ['مشروع الكتب', 'كتاب', '#B3362B'], ['المقالات', 'مقالة', '#2F9E66']];
-const ROLE = { OWNER: 'مالك', MANAGER: 'مدير', REVIEWER: 'مراجع' };
+const ROLE = { OWNER: 'مودريتور', MANAGER: 'الشيخ', REVIEWER: 'مراجع' };
+/** الأسماء القديمة (مالك/مدير) بتتحوّل للجديدة */
+function normRole_(v) {
+  const r = String(v || '').trim();
+  if (r === 'مالك' || r === ROLE.OWNER) return ROLE.OWNER;
+  if (r === 'مدير' || r === 'شيخ' || r === ROLE.MANAGER) return ROLE.MANAGER;
+  return ROLE.REVIEWER;
+}
 
 // الصلاحيات: [المفتاح، الوصف، افتراضي المدير، افتراضي المراجع] — المالك عنده كله دايمًا
 const PERMS = [
@@ -39,9 +46,9 @@ const PERMS = [
   ['settings', 'تعديل الإعدادات (أيام الشغل ومواعيد التنبيه)', false, false],
 ];
 
-const ST = { NEW: 'جديدة', SENT: 'عند المراجع', LATE: 'متأخرة', DONE: 'سُلّمت',
+const ST = { NEW: 'جديدة', SHEIKH: 'عند الشيخ', SENT: 'عند المراجع', LATE: 'متأخرة', DONE: 'سُلّمت',
              FIXED: 'عُدّلت', PUB: 'نُشرت' };
-const ST_COLORS = [[ST.NEW, '#eeeeee'], [ST.SENT, '#fff4cc'], [ST.LATE, '#f8d0cc'],
+const ST_COLORS = [[ST.NEW, '#eeeeee'], [ST.SHEIKH, '#f6e6c4'], [ST.SENT, '#fff4cc'], [ST.LATE, '#f8d0cc'],
   [ST.DONE, '#d4edda'], [ST.FIXED, '#d0e4f5'], [ST.PUB, '#c9c3e6']];
 
 const DAY_NAMES = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
@@ -107,7 +114,7 @@ function setup() {
   props.setProperty('ADMIN_CODE_AT', String(nowDate_().getTime()));   // الكود بيشتغل ٣٠ دقيقة بس
   ui.alert('تم الإعداد ✅',
     'البوت: @' + me.username + '\n\n' +
-    '١) عشان تبقى المالك: افتح البوت من حسابك وابعت:\n/admin ' + code + '\n\n' +
+    '١) عشان تبقى المودريتور: افتح البوت من حسابك وابعت:\n/admin ' + code + '\n\n' +
     '٢) كل عضو في الفريق يفتح البوت ويضغط Start، فاسمه ينزل لوحده في ورقة «الفريق» كمراجع.\n\n' +
     '٣) اربط الموقع من القائمة: 🔗 ربط الموقع.', ui.ButtonSet.OK);
 }
@@ -236,11 +243,10 @@ function deliver_(title, link, rev, id, due, project) {
   const caption =
     '📚 <b>' + esc_(P.item) + ' للمراجعة — ' + esc_(P.name) + '</b>\n«' + esc_(title) + '»\n\n' +
     '🗓 موعد التسليم: <b>' + arDate_(due) + '</b>\n\n' +
-    '✍️ ابعت ملاحظاتك <b>ردًّا (Reply) على الرسالة دي</b> — نص أو ملف أو صورة أو رسالة صوتية — ' +
-    'ولما تخلص اضغط «تم التسليم».';
+    '📥 اضغط <b>«استلمت المراجعة»</b>، وبعدها ابعت تعديلاتك هنا (نص أو ملف أو صور أو صوت)، ولما تخلص اضغط <b>«✅ تم الانتهاء من المراجعة»</b>.\n\n' + tag_(title);
   try {
     return tg_('sendDocument', { chat_id: rev.chat, document: blob, caption: caption,
-      parse_mode: 'HTML', reply_markup: doneKeyboard_(id) });
+      parse_mode: 'HTML', reply_markup: receiveKeyboard_(id) });
   } catch (e) { throw new Error('تليجرام رفض — ' + e.message); }
 }
 
@@ -248,15 +254,15 @@ function deliver_(title, link, rev, id, due, project) {
 // API للموقع (Web App) — كل طلب لازم يكون معاه جلسة دخول صالحة
 // ================================================================
 const API = {
-  bootstrap: apiBootstrap_, send: apiSend_, setStatus: apiSetStatus_, addNote: apiAddNote_,
-  markDone: apiMarkDone_, updateMember: apiUpdateMember_, setPermissions: apiSetPermissions_,
-  saveSettings: apiSaveSettings_, saveProjects: apiSaveProjects_, logout: apiLogout_,
+  bootstrap: apiBootstrap_, addFiles: apiAddFiles_, sendToSheikh: apiSendToSheikh_, deleteFile: apiDeleteFile_,
+  assign: apiAssign_, nudge: apiNudge_, setStatus: apiSetStatus_, addNote: apiAddNote_, markDone: apiMarkDone_,
+  updateMember: apiUpdateMember_, saveSettings: apiSaveSettings_, saveProjects: apiSaveProjects_, logout: apiLogout_,
 };
 
 function doGet() { return json_({ ok: true, result: 'API شغال ✅' }); }
 
 // العمليات اللي بتكتب: بتاخد قفل، وبترجّع البيانات الجديدة في نفس الرد (من غير رحلة تانية)
-const API_WRITES = { send: 1, setStatus: 1, addNote: 1, markDone: 1, updateMember: 1, setPermissions: 1, saveSettings: 1, saveProjects: 1 };
+const API_WRITES = { addFiles: 1, sendToSheikh: 1, deleteFile: 1, assign: 1, nudge: 1, setStatus: 1, addNote: 1, markDone: 1, updateMember: 1, saveSettings: 1, saveProjects: 1 };
 
 function doPost(e) {
   fresh_();
@@ -331,7 +337,8 @@ function apiLogin_(token) {
   if (!chat) throw new Error('رابط الدخول انتهى أو اتستخدم قبل كده — ابعت /login للبوت تاني');
   cache.remove('LOGIN_' + token);
   const m = readTeam_().find(x => x.chat === chat && x.active);
-  if (!m) throw new Error('حسابك مش مفعّل في الفريق — كلّم المسؤول');
+  if (!m) throw new Error('حسابك مش مفعّل في الفريق — كلّم المودريتور');
+  if (!siteAllowed_(m)) throw new Error('الموقع للمودريتور والشيخ بس — شغلك كله على البوت 👍');
   const ses = newToken_() + newToken_();
   PropertiesService.getScriptProperties().setProperty('SES_' + ses,
     JSON.stringify({ chat: chat, exp: nowDate_().getTime() + SESSION_DAYS * 86400000 }));
@@ -346,7 +353,7 @@ function sessionUser_(ses) {
   const s = JSON.parse(raw);
   if (s.exp < nowDate_().getTime()) { props.deleteProperty('SES_' + ses); return null; }
   const m = readTeam_().find(x => x.chat === s.chat && x.active);
-  return m ? userOf_(m) : null;
+  return m && siteAllowed_(m) ? userOf_(m) : null;
 }
 
 function apiLogout_(u, args, ses) {
@@ -365,13 +372,17 @@ function cleanSessions_() {
 
 function newToken_() { return Utilities.getUuid().replace(/-/g, ''); }
 
+/** الموقع للمودريتور والشيخ بس — المراجعين شغلهم كله على البوت */
+function siteAllowed_(m) { return m.chat === adminChat_() || m.role === ROLE.MANAGER; }
+
 function userOf_(m) {
   const owner = m.chat === adminChat_();
   const role = owner ? ROLE.OWNER : (m.role === ROLE.MANAGER ? ROLE.MANAGER : ROLE.REVIEWER);
-  const perms = {};
-  const matrix = readPerms_();
-  PERMS.forEach(p => { perms[p[0]] = owner ? true : !!matrix[role === ROLE.MANAGER ? 'manager' : 'reviewer'][p[0]]; });
-  return { chat: m.chat, name: m.name, role: role, isOwner: owner, perms: perms, projects: owner ? [] : (m.projects || []) };
+  const sheikh = role === ROLE.MANAGER;
+  const perms = { view_all: owner || sheikh, upload: owner, assign: owner || sheikh, status: owner,
+                  team: owner, settings: owner, send: owner };
+  return { chat: m.chat, name: m.name, role: role, isOwner: owner, isSheikh: sheikh, perms: perms,
+           projects: owner ? [] : (m.projects || []) };
 }
 
 function need_(u, perm) {
@@ -390,7 +401,7 @@ function apiBootstrap_(u) {
   const projs = readProjects_();
   const all = readLectures_().filter(l => l.title);
   const visible = u.perms.view_all ? all.filter(l => sees_(u, l.project) || l.reviewer === u.name) : all.filter(l => l.reviewer === u.name);
-  const canTeam = u.isOwner || u.perms.team || u.perms.view_all;
+  const canTeam = u.isOwner;
   return {
     me: u,
     bot: bot,
@@ -404,14 +415,15 @@ function apiBootstrap_(u) {
         nextWorkDay: nextWorkDay_(today, wd), defaultDue: computeDue_(today, wd) };
     }),
     statuses: Object.keys(ST).map(k => ST[k]),
-    reviewers: u.perms.send ? readReviewers_().map(r => r.name) : [],
+    reviewers: u.perms.assign ? readReviewers_().filter(r => r.chat !== adminChat_()).map(r => r.name) : [],
+    sheikhs: readTeam_().filter(m => m.active && m.role === ROLE.MANAGER).map(m => m.name),
     lectures: visible.reverse().map(l => lecOut_(l, today, u)),
     team: canTeam ? readTeam_().map(m => ({
       chat: m.chat, name: m.name, username: m.username, joined: ymdOf_(m.joined),
       role: m.chat === adminChat_() ? ROLE.OWNER : (m.role === ROLE.MANAGER ? ROLE.MANAGER : ROLE.REVIEWER),
       active: m.active, notify: m.notify, projects: m.projects })) : [],
-    permsDef: PERMS.map(p => ({ key: p[0], label: p[1] })),
-    permissions: (u.isOwner || u.perms.team) ? readPerms_() : null,
+    permsDef: [],
+    permissions: null,
     log: u.perms.view_all ? readLog_(300).filter(a => !a.project || sees_(u, a.project)) : [],
   };
 }
@@ -423,7 +435,7 @@ function lecOut_(l, today, u) {
     sent: ymdOf_(l.sent), due: due, done: ymdOf_(l.doneAt), reminded: !!ymdOf_(l.reminded),
     lateDays: isOpen_(l) && due && due < today ? daysBetween_(due, today) : 0,
     notes: l.notes.trim(), files: l.noteFiles.split('\n').map(x => x.trim()).filter(Boolean),
-    mine: l.reviewer === u.name,
+    mine: l.reviewer === u.name, received: ymdOf_(l.received),
   };
 }
 
@@ -460,6 +472,128 @@ function apiSend_(u, args) {
   return { ok: ok, bad: bad };
 }
 
+// ================================================================
+// المودريتور يرفع ← يبعت للشيخ ← الشيخ يوزّع على المراجعين
+// ================================================================
+/** {project, items: [{title, link}], sendNow} — الملفات بتنزل «جديدة» لحد ما تتبعت للشيخ */
+function apiAddFiles_(u, args) {
+  need_(u, 'upload');
+  const project = String(args.project || '').trim();
+  const P = readProjects_().find(x => x.name === project);
+  if (!P) throw new Error('اختار المشروع');
+  if (!P.active) throw new Error('المشروع ده متوقّف');
+  let nextId = readLectures_().reduce((m, l) => Math.max(m, l.id), 0) + 1;
+  const ok = [], bad = [], ids = [];
+  (args.items || []).forEach(it => {
+    const title = String(it.title || '').trim(), link = String(it.link || '').trim();
+    if (!title && !link) return;
+    const name = '«' + (title || 'بدون عنوان') + '»';
+    const keep = { title: title, link: link };
+    if (!title) { bad.push(Object.assign(keep, { error: name + ': اكتب العنوان' })); return; }
+    const fid = driveId_(link);
+    if (!fid) { bad.push(Object.assign(keep, { error: name + ': رابط الملف ناقص أو مش مفهوم (لازم رابط من Google Drive)' })); return; }
+    try {
+      const f = DriveApp.getFileById(fid);
+      if (f.getSize() > MAX_UPLOAD) { bad.push(Object.assign(keep, { error: name + ': الملف أكبر من 50 ميجا (حد تليجرام)' })); return; }
+    } catch (e) {
+      bad.push(Object.assign(keep, { error: name + ': مش قادر أفتح الملف من Drive (لازم يكون على حساب البوت أو متشارك معاه)' })); return;
+    }
+    sheet_(SH.LECT).appendRow([nextId, title, link, '', '', '', ST.NEW, '', '', '', '', '', project]);
+    log_(u.name, 'رفع ملف', title, project);
+    ids.push(nextId); ok.push(name);
+    nextId++;
+  });
+  let sent = 0;
+  if (args.sendNow && ids.length) { fresh_(); sent = sendToSheikh_(u, ids); }
+  return { ok: ok, bad: bad, sent: sent };
+}
+
+/** {ids?} — كل ملف «جديد» يروح للشيخ في رسالة لوحده باسمه ورابطه وزرار «اختار المراجع» */
+function apiSendToSheikh_(u, args) {
+  need_(u, 'upload');
+  return { sent: sendToSheikh_(u, args.ids && args.ids.length ? args.ids.map(Number) : null) };
+}
+
+function sendToSheikh_(u, ids) {
+  const sheikhs = readTeam_().filter(m => m.active && m.role === ROLE.MANAGER);
+  if (!sheikhs.length) throw new Error('لسه مفيش شيخ متحدد — حدّده من صفحة «الفريق»');
+  const items = readLectures_().filter(l => l.title && l.status === ST.NEW && (!ids || ids.indexOf(l.id) !== -1));
+  if (!items.length) throw new Error('مفيش ملفات جديدة تتبعت للشيخ');
+  items.forEach(l => {
+    let to = sheikhs.filter(sk => sees_(sk, l.project));
+    if (!to.length) to = sheikhs;
+    to.forEach(sk => send_(sk.chat, sheikhFileText_(l), { reply_markup: { inline_keyboard: [[{ text: '👤 اختار المراجع', callback_data: 'asg:' + l.id }]] } }));
+    sheet_(SH.LECT).getRange(l.row, L.STATUS).setValue(ST.SHEIKH);
+    log_(u.name, 'بعت للشيخ', l.title, l.project);
+  });
+  return items.length;
+}
+
+function sheikhFileText_(l) {
+  const P = projectOf_(l.project);
+  return '📄 <b>' + esc_(l.title) + '</b>\n📁 ' + esc_(P.name) + ' · ' + esc_(P.item) + '\n🔗 <a href="' + esc_(l.file) + '">رابط الملف</a>\n\n' + tag_(l.title);
+}
+
+/** حذف ملف لسه ما اتوزّعش (لو اترفع غلط) */
+function apiDeleteFile_(u, args) {
+  need_(u, 'upload');
+  const lec = findLecture_(args.id);
+  if ([ST.NEW, ST.SHEIKH].indexOf(lec.status) === -1) throw new Error('الملف ده اتوزّع خلاص، مينفعش يتمسح');
+  sheet_(SH.LECT).deleteRow(lec.row);
+  log_(u.name, 'مسح ملف', lec.title, lec.project);
+  return true;
+}
+
+/** {items: [{id, reviewer, due}]} — الشيخ (أو المودريتور) يوزّع، والبوت يبعت لكل مراجع ملفه */
+function apiAssign_(u, args) {
+  need_(u, 'assign');
+  const revs = readReviewers_();
+  const ok = [], bad = [];
+  (args.items || []).forEach(it => {
+    const lec = readLectures_().find(l => l.id === Number(it.id));
+    if (!lec) return;
+    const name = '«' + lec.title + '»';
+    if ([ST.NEW, ST.SHEIKH].indexOf(lec.status) === -1) { bad.push({ id: lec.id, error: name + ': اتوزّع خلاص' }); return; }
+    if (!sees_(u, lec.project)) { bad.push({ id: lec.id, error: name + ': المشروع ده مش من مشاريعك' }); return; }
+    const rev = revs.find(r => r.name === String(it.reviewer || '').trim());
+    if (!rev) { bad.push({ id: lec.id, error: name + ': اختار المراجع' }); return; }
+    const due = ymdOf_(it.due) || computeDue_(todayYmd_(), projWorkDays_(lec.project));
+    try { assignOne_(lec, rev, due, u.name); ok.push(name + ' ← ' + rev.name + ' (لحد ' + arDate_(due) + ')'); }
+    catch (e) { bad.push({ id: lec.id, error: name + ': ' + e.message }); }
+  });
+  return { ok: ok, bad: bad };
+}
+
+function assignOne_(lec, rev, due, by) {
+  const msg = deliver_(lec.title, lec.file, rev, lec.id, due, lec.project);
+  const sh = sheet_(SH.LECT);
+  sh.getRange(lec.row, L.REVIEWER).setValue(rev.name);
+  sh.getRange(lec.row, L.SENT).setValue(nowDate_());
+  sh.getRange(lec.row, L.DUE).setValue(dateOf_(due));
+  sh.getRange(lec.row, L.STATUS).setValue(ST.SENT);
+  sh.getRange(lec.row, L.REMINDED).setValue('');
+  sh.getRange(lec.row, L.MSGS).setValue(String(msg.message_id));
+  sh.getRange(lec.row, L.RECEIVED).setValue('');
+  showKeyboardOnce_(rev.chat);
+  log_(by, 'وزّع على ' + rev.name, lec.title, lec.project);
+}
+
+function apiNudge_(u, args) {
+  need_(u, 'assign');
+  return nudgeOne_(u, findLecture_(args.id));
+}
+
+function nudgeOne_(u, lec) {
+  if (!sees_(u, lec.project)) throw new Error('المشروع ده مش من مشاريعك');
+  if (!isOpen_(lec)) throw new Error('سلّمها خلاص ✅');
+  const rev = readReviewers_().find(r => r.name === lec.reviewer);
+  if (!rev) throw new Error('المراجع مش موجود أو متوقّف');
+  send_(rev.chat, '🔔 <b>تذكير من ' + esc_(u.name) + '</b>\nلسه مستنيين مراجعة «' + esc_(lec.title) + '» (' + esc_(lec.project) + ')، وموعدها ' + arDate_(ymdOf_(lec.due)) + '.\n\n' +
+    'لو خلصت ابعت التعديلات واضغط «✅ تم الانتهاء من المراجعة».\n\n' + tag_(lec.title), { reply_markup: doneKeyboard_(lec.id), reply_to: lec.msgs[0] });
+  log_(u.name, 'نبّه ' + rev.name, lec.title, lec.project);
+  return rev.name;
+}
+
 function apiSetStatus_(u, args) {
   need_(u, 'status');
   const status = String(args.status || '');
@@ -482,8 +616,8 @@ function apiAddNote_(u, args) {
   const old = lec.notes.trim();
   sheet_(SH.LECT).getRange(lec.row, L.NOTES).setValue((old ? old + '\n' : '') + '• ' + text);
   if (first) log_(u.name, 'بدأ يكتب ملاحظات', lec.title, lec.project);
-  managersToNotify_().filter(m => m.chat !== u.chat && sees_(m, lec.project)).forEach(m =>
-    send_(m.chat, '📝 <b>' + esc_(u.name) + '</b> — «' + esc_(lec.title) + '» · ' + esc_(lec.project) + ' <i>(من الموقع)</i>\n\n' + esc_(text)));
+  if (adminChat_() && adminChat_() !== u.chat)
+    send_(adminChat_(), '📝 <b>' + esc_(u.name) + '</b> — «' + esc_(lec.title) + '» · ' + esc_(lec.project) + ' <i>(من الموقع)</i>\n\n' + esc_(text) + '\n\n' + tag_(lec.title));
   return true;
 }
 
@@ -502,7 +636,7 @@ function apiUpdateMember_(u, args) {
   if (!t) throw new Error('العضو مش موجود');
   const targetOwner = t.chat === adminChat_();
   const targetRole = targetOwner ? ROLE.OWNER : (t.role === ROLE.MANAGER ? ROLE.MANAGER : ROLE.REVIEWER);
-  if (!u.isOwner && targetRole !== ROLE.REVIEWER) throw new Error('تعديل المدراء للمالك بس');
+  if (!u.isOwner) throw new Error('تعديل الفريق للمودريتور بس');
   const sh = sheet_(SH.TEAM);
   const changes = [];
 
@@ -518,14 +652,20 @@ function apiUpdateMember_(u, args) {
     }
   }
   if (args.role !== undefined && args.role !== targetRole) {
-    if (!u.isOwner) throw new Error('تغيير الأدوار للمالك بس');
-    if (targetOwner) throw new Error('المالك ميتغيّرش دوره من هنا (بيتنقل بكود /admin جديد)');
+    if (targetOwner) throw new Error('المودريتور ميتغيّرش دوره من هنا');
     if ([ROLE.MANAGER, ROLE.REVIEWER].indexOf(args.role) === -1) throw new Error('دور مش معروف');
     sh.getRange(t.row, T.ROLE).setValue(args.role);
+    if (args.role === ROLE.MANAGER) {
+      sh.getRange(t.row, T.NOTIFY).setValue(true);
+      send_(t.chat, '🕌 <b>أهلًا يا شيخ ' + esc_(t.name) + '</b>\nبقيت الشيخ في نظام المراجعة.\n\n' +
+        '• الملفات الجاهزة بتوصلك هنا، كل ملف في رسالة باسمه ورابطه.\n' +
+        '• اضغط «👤 اختار المراجع» تحت أي ملف، واختار المراجع، والبوت يبعتهوله على طول.\n' +
+        '• أو اضغط «' + BTN_READY + '» تحت عشان تشوف كل الملفات المستنية.\n\n/login — صفحتك في الموقع', { reply_markup: sheikhKeyboard_() });
+    }
     changes.push('خلّى «' + t.name + '» ' + args.role);
   }
   if (args.active !== undefined && !!args.active !== t.active) {
-    if (targetOwner) throw new Error('المالك ميتوقّفش');
+    if (targetOwner) throw new Error('المودريتور ميتوقّفش');
     sh.getRange(t.row, T.ACTIVE).setValue(!!args.active);
     changes.push((args.active ? 'فعّل' : 'وقّف') + ' «' + t.name + '»');
   }
@@ -534,7 +674,7 @@ function apiUpdateMember_(u, args) {
     changes.push((args.notify ? 'شغّل' : 'قفل') + ' إشعارات «' + t.name + '»');
   }
   if (args.projects !== undefined) {
-    if (!u.isOwner) throw new Error('تحديد مشاريع الأعضاء للمالك بس');
+    if (!u.isOwner) throw new Error('تحديد مشاريع الأعضاء للمودريتور بس');
     const names = readProjects_().map(x => x.name);
     const list = (args.projects || []).map(String).filter(x => names.indexOf(x) !== -1);
     const val = list.join('، ');
@@ -673,8 +813,8 @@ function adminEveJob_(today) {
   if (!pending.length) { send_(admin, '✅ كل المراجعات اللي بكرة شغلها <b>اتسلّمت</b>. مفيش حد متأخر 👌'); return; }
   const text = '⚠️ <b>لسه ما سلّموش — وبكرة يوم شغلك</b>\n\n' + pending.map(l => {
     const due = ymdOf_(l.due), late = due && due < today ? daysBetween_(due, today) : 0;
-    return '• <b>' + esc_(l.reviewer) + '</b> — «' + esc_(l.title) + '» (' + esc_(l.project) + ') — ' + (late ? 'متأخرة من ' + late + ' يوم' : 'موعدها ' + arDate_(due));
-  }).join('\n') + '\n\nاضغط «🔔 نبّه» عشان أبعت للمراجع تذكير.';
+    return '• <b>' + esc_(l.reviewer) + '</b> — «' + esc_(l.title) + '» (' + esc_(l.project) + ') — ' + (late ? 'متأخرة من ' + late + ' يوم' : 'موعدها ' + arDate_(due)) + (ymdOf_(l.received) ? ' · استلم ✓' : ' · <i>ما ضغطش «استلمت»</i>');
+  }).join('\n') + '\n\nاضغط «🔔 نبّه» عشان أبعت للمراجع تذكير.\n\n' + pending.map(l => tag_(l.title)).join(' ');
   send_(admin, text, { reply_markup: { inline_keyboard: pending.slice(0, 30).map(l =>
     [{ text: '🔔 نبّه ' + l.reviewer + ' — ' + l.title.slice(0, 28), callback_data: 'nudge:' + l.id }]) } });
 }
@@ -690,7 +830,10 @@ function workDayText_(day, projs) {
     if (done.length) out.push('✂️ تعديل ورندر ورفع (' + done.length + ') — الملاحظات وصلت:', ...done.map(l => '  • «' + esc_(l.title) + '»'));
     if (fixed.length) out.push('📤 متعدّلة ومستنية الرفع (' + fixed.length + '):', ...fixed.map(l => '  • «' + esc_(l.title) + '»'));
     if (open.length) out.push('⏳ لسه عند المراجعين: ' + open.length + ' (التفاصيل في الرسالة اللي بعدها)');
-    out.push('🆕 تجهيز الدفعة الجديدة وإرسالها للمراجعة.');
+    const atSh = by(ST.SHEIKH).length, fresh = by(ST.NEW).length;
+    if (fresh) out.push('🆕 ملفات لسه ما اتبعتتش للشيخ: ' + fresh);
+    if (atSh) out.push('📥 ملفات عند الشيخ لسه ما اتوزّعتش: ' + atSh);
+    out.push('🆕 رفع الدفعة الجديدة وإرسالها للشيخ.');
   });
   return out.join('\n');
 }
@@ -710,7 +853,7 @@ function dailyJob_(today) {
     if (due === tomorrow && !l.reminded) {
       const m = send_(rev.chat,
         '⏰ <b>تذكير</b>\nميعاد تسليم مراجعة «' + esc_(l.title) + '» (' + esc_(l.project) + ') <b>بكرة، ' + arDate_(due) + '</b>.\n\n' +
-        'لو خلصت: ابعت الملاحظات ردًّا على رسالة المحاضرة واضغط «تم التسليم».',
+        'لو خلصت: ابعت التعديلات واضغط «✅ تم الانتهاء من المراجعة».\n\n' + tag_(l.title),
         { reply_markup: doneKeyboard_(l.id), reply_to: l.msgs[0] });
       sh.getRange(l.row, L.REMINDED).setValue(nowDate_());
       if (m) sh.getRange(l.row, L.MSGS).setValue(l.msgs.concat(String(m.message_id)).join(','));
@@ -719,7 +862,7 @@ function dailyJob_(today) {
       log_('النظام', 'المراجعة اتأخرت عند ' + l.reviewer, l.title, l.project);
       send_(rev.chat,
         '⏳ ميعاد مراجعة «' + esc_(l.title) + '» (' + esc_(l.project) + ') كان ' + arDate_(due) + '.\n' +
-        'لو خلصت ابعت الملاحظات واضغط «تم التسليم»، ولو محتاج وقت قول للمسؤول.',
+        'لو خلصت ابعت التعديلات واضغط «✅ تم الانتهاء من المراجعة»، ولو محتاج وقت قول للمودريتور.\n\n' + tag_(l.title),
         { reply_markup: doneKeyboard_(l.id), reply_to: l.msgs[0] });
     }
   });
@@ -746,6 +889,8 @@ function handleUpdate_(u) {
   if (/^\/help\b/.test(text)) return onHelp_(m);
   if (/^\/deliver\b/.test(text) || text === BTN_DELIVER) return onDeliverStart_(m);
   if (text === BTN_MY) return onMy_(m);
+  if (text === BTN_READY) return onReady_(m);
+  if (text === BTN_SUMMARY) return onStatus_(m);
   if (/^\//.test(text)) return send_(m.chat.id, 'أمر مش معروف. ابعت /help');
   return onNote_(m);
 }
@@ -755,6 +900,10 @@ function onStart_(m, payload) {
   const member = readTeam_().find(r => r.chat === chat);
   if (member) {
     if (payload === 'login') return onLogin_(m);
+    if (siteAllowed_(member)) {
+      send_(chat, 'أهلًا ' + esc_(member.name) + ' 👋 (' + (member.chat === adminChat_() ? ROLE.OWNER : ROLE.MANAGER) + ')\n/login — صفحتك في الموقع', { reply_markup: keyboardFor_(member) });
+      return;
+    }
     send_(chat, 'أهلًا ' + esc_(member.name) + ' 👋\nأنت متسجّل. أي مراجعة عليك هتوصلك هنا بميعاد تسليمها.\n\n' +
       'لما تخلص اضغط زرار «' + BTN_DELIVER + '» اللي تحت وابعت تعديلاتك.\n/login — رابط الدخول للموقع', { reply_markup: mainKeyboard_() });
     return;
@@ -766,7 +915,7 @@ function onStart_(m, payload) {
   log_(name, 'انضم للفريق', '');
   send_(chat, 'أهلًا ' + esc_(name) + ' 👋\nاتسجّلت في نظام المراجعة ✅\n' +
     'أي محاضرة عليك مراجعتها هتوصلك هنا كملف PDF بميعاد تسليمها، وهيوصلك تذكير قبل الميعاد بيوم.\n\n' +
-    'لما تخلص المراجعة: اضغط زرار «' + BTN_DELIVER + '» اللي تحت، وابعت تعديلاتك (نص أو ملف أو صور أو صوت)، وفي الآخر اضغط «✅ تم التسليم».\n\n' +
+    'لما تخلص المراجعة: اضغط زرار «' + BTN_DELIVER + '» اللي تحت، وابعت تعديلاتك (نص أو ملف أو صور أو صوت)، وفي الآخر اضغط «✅ تم الانتهاء من المراجعة».\n\n' +
     '/login — رابط الدخول للموقع', { reply_markup: mainKeyboard_() });
   managersToNotify_().forEach(x => send_(x.chat, '👤 عضو جديد انضم للفريق: <b>' + esc_(name) + '</b> (مراجع)'));
   if (payload === 'login') onLogin_(m);
@@ -797,8 +946,8 @@ function onAdmin_(m, text) {
     else if (x.chat === prev || x.role === ROLE.OWNER) sh.getRange(x.row, T.ROLE).setValue(ROLE.MANAGER);
   });
   fresh_();
-  log_(readTeam_().find(x => x.chat === chat).name, 'بقى مالك النظام', '');
-  send_(chat, '✅ أنت مالك النظام دلوقتي.\nهيوصلك: انضمام أي عضو، وكل ملاحظة باسم صاحبها، وكل تسليم، وملخص الصبح في أيام الشغل، وتذكير بالليل قبل يوم الشغل.\n\n' +
+  log_(readTeam_().find(x => x.chat === chat).name, 'بقى المودريتور', '');
+  send_(chat, '✅ أنت المودريتور دلوقتي.\nهيوصلك: انضمام أي عضو، وكل ملاحظة باسم صاحبها، وكل تسليم، وملخص الصبح في أيام الشغل، وتذكير بالليل قبل يوم الشغل.\n\n' +
     '/login — ادخل الموقع وظبّط الفريق والصلاحيات\n/status — الملخص في أي وقت');
 }
 
@@ -806,7 +955,11 @@ function onLogin_(m) {
   const chat = String(m.chat.id);
   const member = readTeam_().find(r => r.chat === chat);
   if (!member) { send_(chat, 'ابعت /start الأول عشان تتسجّل.'); return; }
-  if (!member.active) { send_(chat, 'حسابك متوقّف حاليًا — كلّم المسؤول.'); return; }
+  if (!member.active) { send_(chat, 'حسابك متوقّف حاليًا — كلّم المودريتور.'); return; }
+  if (!siteAllowed_(member)) {
+    send_(chat, 'الموقع للمودريتور والشيخ بس 🙂\nشغلك كله هنا في البوت: المراجعات بتوصلك هنا، ولما تخلص اضغط «' + BTN_DELIVER + '».', { reply_markup: mainKeyboard_() });
+    return;
+  }
   const api = PropertiesService.getScriptProperties().getProperty('API_URL');
   if (!api) { send_(chat, 'الموقع لسه ما اتربطش. المسؤول يربطه من الشيت: 🔗 ربط الموقع.'); return; }
   const token = newToken_();
@@ -834,7 +987,7 @@ function onMy_(m) {
 
 function onHelp_(m) {
   send_(m.chat.id, '• المراجعة بتوصلك هنا ملف بميعاد تسليمها، وتذكير قبل الميعاد بيوم.\n' +
-    '• لما تخلص: اضغط «' + BTN_DELIVER + '» اللي تحت، وابعت تعديلاتك (نص أو ملف أو صور أو صوت) قد ما تحب، وفي الآخر اضغط «✅ تم التسليم».\n' +
+    '• لما تخلص: اضغط «' + BTN_DELIVER + '» اللي تحت، وابعت تعديلاتك (نص أو ملف أو صور أو صوت) قد ما تحب، وفي الآخر اضغط «✅ تم الانتهاء من المراجعة».\n' +
     '• تقدر كمان تعمل رد (Reply) على رسالة المحاضرة بأي ملاحظة.\n\n' +
     '«' + BTN_MY + '» — اللي عليك دلوقتي\n/login — رابط الدخول للموقع', { reply_markup: mainKeyboard_() });
 }
@@ -848,6 +1001,23 @@ function showKeyboardOnce_(chat) {
   send_(chat, '👇 لما تخلص المراجعة اضغط زرار «' + BTN_DELIVER + '» اللي تحت.', { reply_markup: mainKeyboard_() });
   props.setProperty('KB_' + chat, '1');
 }
+const BTN_READY = '📥 الملفات الجاهزة';
+const BTN_SUMMARY = '📊 الملخص';
+function sheikhKeyboard_() { return { keyboard: [[{ text: BTN_READY }, { text: BTN_SUMMARY }]], resize_keyboard: true, is_persistent: true }; }
+function keyboardFor_(m) { return m.role === ROLE.MANAGER ? sheikhKeyboard_() : m.chat === adminChat_() ? { keyboard: [[{ text: BTN_SUMMARY }]], resize_keyboard: true, is_persistent: true } : mainKeyboard_(); }
+
+/** الشيخ: قايمة الملفات المستنية توزيع، وكل ملف بزرار */
+function onReady_(m) {
+  const chat = String(m.chat.id);
+  const member = readTeam_().find(r => r.chat === chat && r.active);
+  if (!member || !userOf_(member).perms.assign) { send_(chat, 'الزرار ده للشيخ بس.'); return; }
+  const u = userOf_(member);
+  const items = readLectures_().filter(l => l.title && (l.status === ST.SHEIKH || l.status === ST.NEW) && sees_(u, l.project));
+  if (!items.length) { send_(chat, 'مفيش ملفات مستنية توزيع دلوقتي 👌', { reply_markup: keyboardFor_(member) }); return; }
+  send_(chat, '📥 <b>الملفات الجاهزة للتوزيع (' + items.length + ')</b>\nاضغط على أي ملف عشان تختار المراجع:', { reply_markup: { inline_keyboard:
+    items.slice(0, 40).map(l => [{ text: '👤 ' + l.title.slice(0, 34) + ' · ' + l.project, callback_data: 'asg:' + l.id }]) } });
+}
+
 function mainKeyboard_() { return { keyboard: [[{ text: BTN_DELIVER }, { text: BTN_MY }]], resize_keyboard: true, is_persistent: true }; }
 
 function onDeliverStart_(m) {
@@ -867,8 +1037,8 @@ function startDelivery_(chat, lec) {
   const P = projectOf_(lec.project);
   send_(chat, '📤 <b>تسليم مراجعة «' + esc_(lec.title) + '»</b> — ' + esc_(P.name) + '\n\n' +
     'ابعت تعديلاتك هنا دلوقتي: نص، أو ملف، أو صور، أو رسالة صوتية — قد ما تحب، من غير Reply.\n' +
-    'ولما تخلص اضغط <b>«✅ تم التسليم»</b>.',
-    { reply_markup: { inline_keyboard: [[{ text: '✅ تم التسليم', callback_data: 'done:' + lec.id }], [{ text: '↩️ إلغاء', callback_data: 'cancel' }]] } });
+    'ولما تخلص اضغط <b>«✅ تم الانتهاء من المراجعة»</b>.\n\n' + tag_(lec.title),
+    { reply_markup: { inline_keyboard: [[{ text: '✅ تم الانتهاء من المراجعة', callback_data: 'done:' + lec.id }], [{ text: '↩️ إلغاء', callback_data: 'cancel' }]] } });
 }
 
 function onNote_(m) {
@@ -926,19 +1096,22 @@ function saveNote_(lec, m) {
 
 /** كل ملاحظة توصل المدراء اللي مفعّلين الإشعارات فورًا، باسم المراجع واسم المحاضرة */
 function forwardNote_(m, rev, lec) {
-  const to = managersToNotify_().filter(x => x.chat !== String(m.chat.id) && sees_(x, lec.project));
+  const admin = adminChat_();                       // الملاحظات للمودريتور بس (مش للشيخ)
+  const to = admin && admin !== String(m.chat.id) ? [{ chat: admin }] : [];
   if (!to.length) return;
   const head = '📝 <b>' + esc_(rev.name) + '</b> — «' + esc_(lec.title) + '» · ' + esc_(lec.project);
+  const tg = tag_(lec.title);
   to.forEach(x => {
-    if (m.text) { send_(x.chat, head + '\n\n' + esc_(m.text)); return; }
+    if (m.text) { send_(x.chat, head + '\n\n' + esc_(m.text) + '\n\n' + tg); return; }
     if (m.video_note || m.sticker) {          // أنواع ما بتقبلش caption
-      send_(x.chat, head);
+      send_(x.chat, head + '\n\n' + tg);
       try { tg_('copyMessage', { chat_id: x.chat, from_chat_id: m.chat.id, message_id: m.message_id }); } catch (e) {}
       return;
     }
     const original = (m.caption || '').trim();
     let caption = head + (original ? '\n\n' + esc_(original) : '');
-    if (caption.length > 1000) caption = caption.slice(0, 990) + '…';
+    if (caption.length > 900) caption = caption.slice(0, 890) + '…';
+    caption += '\n\n' + tg;
     try {
       tg_('copyMessage', { chat_id: x.chat, from_chat_id: m.chat.id, message_id: m.message_id,
         caption: caption, parse_mode: 'HTML' });
@@ -972,6 +1145,51 @@ function onCallback_(q) {
   const nm = /^nudge:(\d+)$/.exec(data);
   if (nm) return onNudge_(q, chat, Number(nm[1]));
 
+  const ag = /^asg:(\d+)$/.exec(data), ar = /^ar:(\d+):(\d+)$/.exec(data);
+  if (ag || ar) {
+    const member = readTeam_().find(x => x.chat === chat && x.active);
+    const u = member && userOf_(member);
+    const lec = readLectures_().find(l => l.id === Number((ag || ar)[1]));
+    if (!u || !u.perms.assign) { answer_(q.id, 'التوزيع للشيخ بس'); return; }
+    if (!lec) { answer_(q.id, 'الملف ده اتمسح'); return; }
+    if ([ST.NEW, ST.SHEIKH].indexOf(lec.status) === -1) { answer_(q.id, 'اتوزّع خلاص على ' + (lec.reviewer || '—') + ' ✅'); clearButtons_(chat, q.message.message_id); return; }
+    if (ag) {
+      const revs = readReviewers_().filter(r => r.chat !== adminChat_());
+      if (!revs.length) { answer_(q.id, 'مفيش مراجعين مسجّلين لسه'); return; }
+      const rows = [];
+      for (let i = 0; i < revs.length; i += 2) rows.push(revs.slice(i, i + 2).map(r => ({ text: r.name, callback_data: 'ar:' + lec.id + ':' + r.row })));
+      answer_(q.id);
+      send_(chat, '👤 <b>مين يراجع «' + esc_(lec.title) + '»؟</b>\n📁 ' + esc_(lec.project), { reply_markup: { inline_keyboard: rows } });
+      return;
+    }
+    const rev = readReviewers_().find(r => r.row === Number(ar[2]));
+    if (!rev) { answer_(q.id, 'المراجع ده مش موجود أو متوقّف'); return; }
+    const due = computeDue_(todayYmd_(), projWorkDays_(lec.project));
+    try { assignOne_(lec, rev, due, u.name); }
+    catch (e) { answer_(q.id, 'ما اتبعتش: ' + e.message); send_(chat, '⚠️ «' + esc_(lec.title) + '» ما اتبعتش: ' + esc_(e.message)); return; }
+    clearButtons_(chat, q.message.message_id);
+    answer_(q.id, 'اتبعت لـ ' + rev.name + ' ✅');
+    send_(chat, '✅ اتبعت «' + esc_(lec.title) + '» لـ <b>' + esc_(rev.name) + '</b> — موعد التسليم ' + arDate_(due) + '.\nتقدر تغيّر الموعد من صفحتك في الموقع.\n\n' + tag_(lec.title), { reply_markup: keyboardFor_(member) });
+    return;
+  }
+
+  const rc = /^rcv:(\d+)$/.exec(data);
+  if (rc) {
+    const rv = readReviewers_().find(r => r.chat === chat);
+    const lc = readLectures_().find(l => l.id === Number(rc[1]));
+    if (!rv || !lc || lc.reviewer !== rv.name) { answer_(q.id, 'المراجعة دي مش متسجّلة باسمك.'); return; }
+    if (!isOpen_(lc)) { answer_(q.id, 'المراجعة دي خلصت ✅'); clearButtons_(chat, q.message.message_id); return; }
+    editButtons_(chat, q.message.message_id, doneKeyboard_(lc.id));
+    cache.put('DLV_' + chat, String(lc.id), 21600);
+    answer_(q.id, 'استلمت ✅');
+    if (ymdOf_(lc.received)) return;
+    sheet_(SH.LECT).getRange(lc.row, L.RECEIVED).setValue(nowDate_());
+    log_(rv.name, 'استلم المراجعة', lc.title, lc.project);
+    send_(chat, '📥 <b>تمام، استلمت مراجعة الملف «' + esc_(lc.title) + '»</b>\nابعت تعديلاتك هنا (نص أو ملف أو صور أو صوت) قد ما تحب، ولما تخلص اضغط «✅ تم الانتهاء من المراجعة».\n\n' + tag_(lc.title));
+    if (adminChat_()) send_(adminChat_(), '📥 <b>' + esc_(rv.name) + '</b> استلم مراجعة الملف «' + esc_(lc.title) + '» · ' + esc_(lc.project) + '\n🗓 موعده ' + arDate_(ymdOf_(lc.due)) + '\n\n' + tag_(lc.title));
+    return;
+  }
+
   const pk = /^pick:(\d+)$/.exec(data);
   const mt = /^done:(\d+)$/.exec(data);
   if (!pk && !mt) { answer_(q.id); return; }
@@ -991,8 +1209,8 @@ function onCallback_(q) {
   if (cache.get('DLV_' + chat) === String(lec.id)) cache.remove('DLV_' + chat);
   if (!isOpen_(lec)) { answer_(q.id, 'اتسلّمت قبل كده ✅'); return; }
   markDone_(lec, rev.name, '');
-  answer_(q.id, 'تم التسليم ✅');
-  send_(chat, 'جزاك الله خيرًا 🌿 اتسجّل تسليم مراجعة «' + esc_(lec.title) + '» (' + esc_(lec.project) + ')، وظهرت في الموقع إنها اتسلّمت.',
+  answer_(q.id, 'تم الانتهاء ✅');
+  send_(chat, '✅ <b>تم الانتهاء من مراجعة الملف «' + esc_(lec.title) + '»</b> (' + esc_(lec.project) + ')\nجزاك الله خيرًا 🌿\n\n' + tag_(lec.title),
     { reply_markup: mainKeyboard_() });
 }
 
@@ -1002,13 +1220,8 @@ function onNudge_(q, chat, id) {
   const u = member && userOf_(member);
   const lec = readLectures_().find(l => l.id === id);
   if (!u || !lec || !(u.isOwner || (u.perms.view_all && sees_(u, lec.project)))) { answer_(q.id, 'مش عندك صلاحية'); return; }
-  if (!isOpen_(lec)) { answer_(q.id, 'سلّمها خلاص ✅'); return; }
-  const rev = readReviewers_().find(r => r.name === lec.reviewer);
-  if (!rev) { answer_(q.id, 'المراجع مش موجود أو متوقّف'); return; }
-  send_(rev.chat, '🔔 <b>تذكير من ' + esc_(u.name) + '</b>\nلسه مستنيين مراجعة «' + esc_(lec.title) + '» (' + esc_(lec.project) + ')، وموعدها ' + arDate_(ymdOf_(lec.due)) + '.\n\n' +
-    'لو خلصت اضغط «' + BTN_DELIVER + '» وابعت التعديلات.', { reply_markup: mainKeyboard_(), reply_to: lec.msgs[0] });
-  log_(u.name, 'نبّه ' + rev.name, lec.title, lec.project);
-  answer_(q.id, 'اتبعت التنبيه لـ ' + rev.name + ' ✅');
+  try { const name = nudgeOne_(u, lec); answer_(q.id, 'اتبعت التنبيه لـ ' + name + ' ✅'); }
+  catch (e) { answer_(q.id, e.message); }
 }
 
 function markDone_(lec, reviewerName, via) {
@@ -1021,10 +1234,10 @@ function markDone_(lec, reviewerName, via) {
   const late = due && today > due ? daysBetween_(due, today) : 0;
   const nText = (lec.notes.match(/^• /gm) || []).length;
   const nFiles = lec.noteFiles.trim() ? lec.noteFiles.trim().split('\n').length : 0;
-  const text = '✅ <b>' + esc_(reviewerName) + '</b> سلّم مراجعة «' + esc_(lec.title) + '» · ' + esc_(lec.project) + (via ? ' <i>(' + esc_(via) + ')</i>' : '') + '\n' +
+  const text = '✅ <b>تم الانتهاء من مراجعة الملف «' + esc_(lec.title) + '»</b>\n👤 ' + esc_(reviewerName) + ' · 📁 ' + esc_(lec.project) + (via ? ' <i>(' + esc_(via) + ')</i>' : '') + '\n' +
     (late ? '⚠️ متأخر ' + late + ' يوم' : 'في الميعاد') + ' — ' +
-    (nText || nFiles ? nText + ' ملاحظة مكتوبة، ' + nFiles + ' ملف (كلها في الموقع والشيت)' : 'من غير ملاحظات');
-  managersToNotify_().filter(m => sees_(m, lec.project)).forEach(m => send_(m.chat, text));
+    (nText || nFiles ? nText + ' ملاحظة مكتوبة، ' + nFiles + ' ملف (كلها في الموقع والشيت)' : 'من غير ملاحظات') + '\n\n' + tag_(lec.title);
+  if (adminChat_()) send_(adminChat_(), text);          // للمودريتور بس (مش للشيخ)
 }
 
 // ================================================================
@@ -1038,10 +1251,12 @@ function digestText_(m) {
   readProjects_().filter(p => !m || sees_(m, p.name)).forEach(p => {
     const pl = ls.filter(l => l.project === p.name);
     const by = st => pl.filter(l => l.status === st);
-    const done = by(ST.DONE), sent = by(ST.SENT), late = by(ST.LATE), fixed = by(ST.FIXED);
-    if (!done.length && !sent.length && !late.length && !fixed.length) return;
+    const done = by(ST.DONE), sent = by(ST.SENT), late = by(ST.LATE), fixed = by(ST.FIXED), atSh = by(ST.SHEIKH), fresh = by(ST.NEW);
+    if (!done.length && !sent.length && !late.length && !fixed.length && !atSh.length && !fresh.length) return;
     any = true;
     out.push('', '━━━━━━━━━━', '📁 <b>' + esc_(p.name) + '</b>');
+    if (fresh.length) out.push('🆕 لسه ما اتبعتتش للشيخ: ' + fresh.length);
+    if (atSh.length) out.push('📥 عند الشيخ (لسه ما اتوزّعتش): ' + atSh.length);
     if (late.length) out.push('⚠️ متأخرة (' + late.length + '):', ...late.map(l => '  • «' + esc_(l.title) + '» — ' + esc_(l.reviewer) + ' — من ' + daysBetween_(ymdOf_(l.due), today) + ' يوم'));
     if (sent.length) out.push('⏳ عند المراجع (' + sent.length + '):', ...sent.map(l => '  • «' + esc_(l.title) + '» — ' + esc_(l.reviewer) + ' — لحد ' + arDate_(ymdOf_(l.due))));
     if (done.length) out.push('✅ اتسلّمت ومستنية التعديل (' + done.length + '):', ...done.map(l => '  • «' + esc_(l.title) + '» — ' + esc_(l.reviewer)));
@@ -1074,6 +1289,8 @@ function ensureSheets_() {
   styleHeader_(team, T_HEADERS.length);
   team.getRange('B:B').setNumberFormat('@');
   team.getRange(2, T.JOINED, rows).setNumberFormat('yyyy/mm/dd');
+  const tn = team.getLastRow() - 1;
+  if (tn > 0) { const rr = team.getRange(2, T.ROLE, tn, 1); rr.setValues(rr.getValues().map(r => [normRole_(r[0])])); }
   team.getRange(2, T.ROLE, rows).setDataValidation(SpreadsheetApp.newDataValidation()
     .requireValueInList([ROLE.OWNER, ROLE.MANAGER, ROLE.REVIEWER], true).setAllowInvalid(false).build());
   // مربعات اختيار من غير ما تمسح القيم الموجودة (insertCheckboxes بيصفّرها)
@@ -1085,8 +1302,6 @@ function ensureSheets_() {
     lec = book.insertSheet(SH.LECT, 0);
     lec.getRange(1, 1, 1, L_HEADERS.length).setValues([L_HEADERS]);
     styleHeader_(lec, L_HEADERS.length);
-    lec.getRange(2, L.STATUS, rows).setDataValidation(SpreadsheetApp.newDataValidation()
-      .requireValueInList(Object.keys(ST).map(k => ST[k]), true).setAllowInvalid(false).build());
     lec.getRange(2, L.SENT, rows).setNumberFormat('yyyy/mm/dd');
     lec.getRange(2, L.DUE, rows).setNumberFormat('yyyy/mm/dd');
     lec.getRange(2, L.DONE_AT, rows).setNumberFormat('yyyy/mm/dd hh:mm');
@@ -1099,6 +1314,10 @@ function ensureSheets_() {
       .whenTextEqualTo(st).setBackground(color).setRanges([lec.getRange(2, L.STATUS, rows)]).build()));
     lec.hideColumns(L.MSGS);
   }
+  lec.getRange(2, L.STATUS, rows).setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInList(Object.keys(ST).map(k => ST[k]), true).setAllowInvalid(false).build());
+  lec.setConditionalFormatRules(ST_COLORS.map(([st, color]) => SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(st).setBackground(color).setRanges([lec.getRange(2, L.STATUS, rows)]).build()));
   lec.getRange(2, L.REVIEWER, rows).setDataValidation(SpreadsheetApp.newDataValidation()
     .requireValueInRange(team.getRange('A2:A'), true).setAllowInvalid(true).build());
 
@@ -1140,6 +1359,8 @@ function ensureSheets_() {
   ensureProjectsSheet_(book);
   const projSheet = book.getSheetByName(SH.PROJ);
   lec.getRange(1, L.PROJECT).setValue('المشروع');
+  lec.getRange(1, L.RECEIVED).setValue('استلم المراجع');
+  lec.getRange(2, L.RECEIVED, rows).setNumberFormat('yyyy/mm/dd hh:mm');
   styleHeader_(lec, L_HEADERS.length);
   lec.setColumnWidth(L.PROJECT, 120);
   lec.getRange(2, L.PROJECT, rows).setDataValidation(SpreadsheetApp.newDataValidation()
@@ -1224,6 +1445,7 @@ function readLecturesRaw_() {
       notes: String(r[L.NOTES - 1]), noteFiles: String(r[L.NOTE_FILES - 1]),
       doneAt: r[L.DONE_AT - 1], reminded: r[L.REMINDED - 1],
       msgs: String(r[L.MSGS - 1]).split(',').map(x => x.trim()).filter(Boolean),
+      received: r[L.RECEIVED - 1],
       project: String(r[L.PROJECT - 1] || '').trim() || defaultProject_(),
     };
   });
@@ -1254,7 +1476,7 @@ function readTeamRaw_() {
   const bool = v => v === true || /^(true|نعم|✓)$/i.test(String(v).trim());
   return s.getRange(2, 1, n, T_HEADERS.length).getValues().map((r, i) => ({
     row: i + 2, name: String(r[0]).trim(), chat: String(r[1]).trim(), username: String(r[2]).trim(),
-    joined: r[3], role: String(r[4]).trim() || ROLE.REVIEWER,
+    joined: r[3], role: normRole_(r[4]),
     active: r[5] === '' || bool(r[5]), notify: bool(r[6]),
     projects: String(r[7] || '').split(/[،,]/).map(x => x.trim()).filter(Boolean),
   })).filter(m => m.name && m.chat);
@@ -1439,5 +1661,12 @@ function clearButtons_(chat, msgId) { try { tg_('editMessageReplyMarkup', { chat
 function react_(chat, msgId) {
   try { tg_('setMessageReaction', { chat_id: chat, message_id: msgId, reaction: [{ type: 'emoji', emoji: '👍' }] }); } catch (e) {}
 }
-function doneKeyboard_(id) { return { inline_keyboard: [[{ text: '✅ تم التسليم', callback_data: 'done:' + id }]] }; }
+function doneKeyboard_(id) { return { inline_keyboard: [[{ text: '✅ تم الانتهاء من المراجعة', callback_data: 'done:' + id }]] }; }
+function receiveKeyboard_(id) { return { inline_keyboard: [[{ text: '📥 استلمت المراجعة', callback_data: 'rcv:' + id }]] }; }
+/** هشتاج باسم المحاضرة تحت كل رسالة (عشان تدوس عليه في تليجرام وتلاقي كل رسايلها) */
+function tag_(title) {
+  const t = String(title || '').replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '');
+  return t ? '#' + t : '';
+}
+function editButtons_(chat, msgId, markup) { try { tg_('editMessageReplyMarkup', { chat_id: chat, message_id: msgId, reply_markup: markup }); } catch (e) {} }
 function esc_(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }

@@ -102,6 +102,7 @@ svg.i { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-widt
 .small { font-size: 13px; }
 .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 99px; white-space: nowrap; background: var(--line-2); color: var(--muted); }
 .st-new { background: #eef0f2; color: #55606a; }
+.st-sheikh { background: #f6e6c4; color: #7a5300; }
 .st-sent { background: var(--warn-soft); color: var(--warn); }
 .st-late { background: var(--bad-soft); color: var(--bad); }
 .st-done { background: var(--ok-soft); color: var(--ok); }
@@ -136,7 +137,18 @@ label.lb { display: block; font-size: 12px; color: var(--muted); margin-bottom: 
 .hello p { margin: 2px 0 0; color: var(--muted); }
 .nextday { background: var(--navy); color: #fff; border-radius: 12px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; }
 .nextday b { font-size: 15px; } .nextday span { color: #b6c8d4; font-size: 13px; display: block; }
-.kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+.kpis.k4 { grid-template-columns: repeat(4, 1fr); margin-bottom: 18px; }
+.banner { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; border-right: 4px solid var(--teal); }
+.banner.warn { border-right-color: #e8b730; display: block; }
+.item.up { grid-template-columns: 34px 1.2fr 2fr; }
+.asg-head, .asg { display: grid; grid-template-columns: 2fr 1fr 150px; gap: 10px; align-items: center; }
+.asg-head { font-size: 12px; color: var(--muted); font-weight: 600; padding: 0 0 6px; border-bottom: 1px solid var(--line); }
+.asg { padding: 10px 0; border-bottom: 1px solid var(--line-2); }
+.asg .t { font-weight: 600; } .asg .s { margin-top: 3px; }
+.asg .t a svg { width: 15px; height: 15px; vertical-align: -2px; }
+.revmini { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line-2); }
+.revmini:last-child { border-bottom: 0; } .revmini .grow { flex: 1; }
 .kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; cursor: pointer; text-align: right; box-shadow: var(--shadow); border-top: 4px solid var(--c, var(--teal)); }
 .kpi:hover { transform: translateY(-1px); }
 .kpi b { display: block; font-size: 30px; line-height: 1.15; color: var(--navy); }
@@ -275,7 +287,7 @@ table.tbl { width: 100%; border-collapse: collapse; }
 @keyframes sp { to { transform: rotate(360deg); } }
 
 /* ---------- الموبايل ---------- */
-@media (max-width: 1100px) { .kpis { grid-template-columns: repeat(3, 1fr); } .g2 { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .g2 { grid-template-columns: 1fr; } }
 @media (max-width: 900px) {
   .shell { grid-template-columns: 1fr; }
   .side { position: fixed; right: 0; top: 0; bottom: 0; width: 270px; z-index: 30; transform: translateX(100%); transition: transform .2s; }
@@ -284,7 +296,15 @@ table.tbl { width: 100%; border-collapse: collapse; }
   .top { padding: 12px 16px; }
   .top h1 { font-size: 18px; }
   .content { padding: 16px 16px 60px; }
-  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .kpis, .kpis.k4 { grid-template-columns: repeat(2, 1fr); }
+  .grid > * { min-width: 0; }
+  .row { flex-wrap: wrap; }
+  .row .grow { flex-basis: 100%; }
+  .card h3 { flex-wrap: wrap; }
+  .asg-head { display: none; }
+  .asg { grid-template-columns: 1fr 1fr; }
+  .asg .grow { grid-column: 1 / -1; }
+  .item.up { grid-template-columns: 30px 1fr; }
   .g3, .rolesdesc { grid-template-columns: 1fr; }
   .item { grid-template-columns: 30px 1fr; }
   .item .n { margin-top: 0; grid-row: span 4; }
@@ -317,7 +337,7 @@ table.tbl { width: 100%; border-collapse: collapse; }
       <li><div>ابعتله الأمر <code>/login</code></div></li>
       <li><div>اضغط زرار <b>«🔐 ادخل الموقع»</b> اللي هيوصلك</div></li>
     </ol>
-    <p class="small muted">لازم تكون ضاغط Start في البوت قبل كده، وحسابك مفعّل في الفريق.</p>
+    <p class="small muted">الموقع للمودريتور والشيخ بس. المراجعين شغلهم كله على البوت.</p>
     <div id="loginMsg"></div>
   </div>
 </div>
@@ -361,9 +381,9 @@ var DRAFT = 'madarij-review-draft-v2';
 
 var DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 var MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-var ST = { NEW: 'جديدة', SENT: 'عند المراجع', LATE: 'متأخرة', DONE: 'سُلّمت', FIXED: 'عُدّلت', PUB: 'نُشرت' };
-var ST_CLASS = { 'جديدة': 'st-new', 'عند المراجع': 'st-sent', 'متأخرة': 'st-late', 'سُلّمت': 'st-done', 'عُدّلت': 'st-fixed', 'نُشرت': 'st-pub' };
-var ST_COLOR = { 'جديدة': '#b9c0c6', 'عند المراجع': '#e8b730', 'متأخرة': '#d4554a', 'سُلّمت': '#2f9e66', 'عُدّلت': '#3b7fc0', 'نُشرت': '#7b68c8' };
+var ST = { NEW: 'جديدة', SHEIKH: 'عند الشيخ', SENT: 'عند المراجع', LATE: 'متأخرة', DONE: 'سُلّمت', FIXED: 'عُدّلت', PUB: 'نُشرت' };
+var ST_CLASS = { 'جديدة': 'st-new', 'عند الشيخ': 'st-sheikh', 'عند المراجع': 'st-sent', 'متأخرة': 'st-late', 'سُلّمت': 'st-done', 'عُدّلت': 'st-fixed', 'نُشرت': 'st-pub' };
+var ST_COLOR = { 'جديدة': '#b9c0c6', 'عند الشيخ': '#c99a2e', 'عند المراجع': '#e8b730', 'متأخرة': '#d4554a', 'سُلّمت': '#2f9e66', 'عُدّلت': '#3b7fc0', 'نُشرت': '#7b68c8' };
 
 var IC = {
   home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
@@ -458,26 +478,26 @@ function refresh(silent) {
     D = d; S.bot = d.bot || S.bot; S.name = d.me.name; save(); saveCache();
     var ae = document.activeElement;
     if (silent && D && ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName) && $('view').contains(ae)) return;  // ما نقاطعش اللي بيكتب
-    if (!PAGE || !allowed(PAGE)) PAGE = (d.me.isOwner || d.me.perms.view_all) ? 'home' : 'mine';
+    if (!PAGE || !allowed(PAGE)) PAGE = defaultPage(d);
     render();
     if (!silent) {}
   }).catch(function (e) { syncing(false); if (S.session) toast(e.message, true); });
 }
 
 // ================= الصفحات =================
+// الموقع لاتنين بس: المودريتور (رفع الملفات والمتابعة) والشيخ (التوزيع)
 var PAGES = [
-  { k: 'home', t: 'كل المشاريع', i: 'grid', ok: function () { return can('view_all'); } },
-  { k: 'dash', t: 'لوحة التحكم', i: 'home', scoped: 1, ok: function () { return can('view_all'); } },
-  { k: 'lectures', t: 'المراجعات', i: 'book', scoped: 1, ok: function () { return can('view_all'); } },
-  { k: 'send', t: 'إرسال دفعة', i: 'send', scoped: 1, ok: function () { return can('send'); } },
-  { k: 'reviewers', t: 'المراجعون', i: 'users', scoped: 1, ok: function () { return can('view_all'); } },
-  { k: 'log', t: 'سجل النشاط', i: 'clock', scoped: 1, ok: function () { return can('view_all'); } },
-  { k: 'mine', t: 'مهامي', i: 'check', ok: function () { return true; } },
-  { k: 'team', t: 'الفريق والصلاحيات', i: 'shield', ok: function () { return can('team'); } },
-  { k: 'settings', t: 'الإعدادات والمشاريع', i: 'sliders', ok: function () { return can('settings'); } },
+  { k: 'home', t: 'كل المشاريع', i: 'grid', ok: function () { return D.me.isOwner; } },
+  { k: 'dash', t: 'لوحة التحكم', i: 'home', scoped: 1, ok: function () { return D.me.isOwner; } },
+  { k: 'files', t: 'الملفات', i: 'book', scoped: 1, ok: function () { return D.me.isOwner; } },
+  { k: 'upload', t: 'رفع ملفات', i: 'send', scoped: 1, ok: function () { return D.me.isOwner; } },
+  { k: 'log', t: 'سجل النشاط', i: 'clock', scoped: 1, ok: function () { return D.me.isOwner; } },
+  { k: 'sheikh', t: 'صفحة الشيخ', i: 'shield', ok: function () { return can('assign'); } },
+  { k: 'team', t: 'الفريق', i: 'users', ok: function () { return D.me.isOwner; } },
+  { k: 'settings', t: 'الإعدادات والمشاريع', i: 'sliders', ok: function () { return D.me.isOwner; } },
 ];
+function defaultPage(d) { return d.me.isOwner ? 'home' : 'sheikh'; }
 function allowed(k) { var p = PAGES.filter(function (x) { return x.k === k; })[0]; return p && p.ok(); }
-function mine() { return D.lectures.filter(function (l) { return l.mine; }); }
 
 // ---------- المشاريع ----------
 function projs() { return (D.projects || []).filter(function (p) { return p.mine && p.active; }); }
@@ -485,33 +505,36 @@ function projOf(name) { return (D.projects || []).filter(function (p) { return p
 function scoped() { return PROJ ? D.lectures.filter(function (l) { return l.project === PROJ; }) : D.lectures; }
 function pchip(name) { return '<span class="pchip" style="--pc:' + esc(projOf(name).color) + '">' + esc(name) + '</span>'; }
 function setProj(name) { PROJ = name || ''; S.proj = PROJ; save(); }
+function byStatus(L, st) { return L.filter(function (l) { return l.status === st; }); }
+function fileLink(l, txt) { return /^https?:/.test(l.file) ? '<a href="' + esc(l.file) + '" target="_blank" rel="noopener">' + (txt || icon('file')) + '</a>' : ''; }
+function rcvChip(l) { return isOpen(l) ? (l.received ? '<span class="chip st-done" title="ضغط «استلمت المراجعة»">استلم ✓</span>' : '<span class="chip st-new">ما استلمش</span>') : ''; }
 
 function render() {
   if (!D) return;
   if (PROJ && !projs().some(function (p) { return p.name === PROJ; })) setProj('');
-  var openMine = mine().filter(isOpen).length;
   var page = PAGES.filter(function (p) { return p.k === PAGE; })[0];
   var btn = function (p, extra) {
     return '<button class="' + (p.k === PAGE ? 'on' : '') + '" data-act="go" data-k="' + p.k + '">' + icon(p.i) + '<span>' + p.t + '</span>' + (extra || '') + '</button>';
   };
   var html = '';
-  if (can('view_all')) {
+  var atSheikh = D.lectures.filter(function (l) { return l.status === ST.SHEIKH; }).length;
+  if (D.me.isOwner) {
     html += '<div class="sec">المشاريع</div>' + btn(PAGES[0]);
     html += projs().map(function (p) {
       var L = D.lectures.filter(function (l) { return l.project === p.name; });
-      var late = L.filter(isLate).length, open = L.filter(isOpen).length;
-      var c = late ? '<span class="count alert">' + n(late) + '</span>' : open ? '<span class="count">' + n(open) + '</span>' : '';
+      var late = L.filter(isLate).length, fresh = byStatus(L, ST.NEW).length;
+      var c = late ? '<span class="count alert">' + n(late) + '</span>' : fresh ? '<span class="count">' + n(fresh) + '</span>' : '';
       return '<button class="proj' + (PROJ === p.name && page && page.scoped ? ' on' : '') + '" style="--pc:' + esc(p.color) + '" data-act="proj" data-p="' + esc(p.name) + '"><span class="pdot"></span><span>' + esc(p.name) + '</span>' + c + '</button>';
     }).join('');
     html += '<div class="sec">' + (PROJ ? 'صفحات «' + esc(PROJ) + '»' : 'كل المشاريع مع بعض') + '</div>';
-    html += PAGES.filter(function (p) { return p.scoped && p.ok(); }).map(function (p) { return btn(p); }).join('');
-  } else if (can('send')) {
-    html += btn(PAGES[3]);
+    html += PAGES.filter(function (p) { return p.scoped; }).map(function (p) {
+      var fresh = p.k === 'upload' ? scoped().filter(function (l) { return l.status === ST.NEW; }).length : 0;
+      return btn(p, fresh ? '<span class="count">' + n(fresh) + '</span>' : '');
+    }).join('');
+    html += '<div class="sec">عام</div>' + btn(PAGES[5], atSheikh ? '<span class="count">' + n(atSheikh) + '</span>' : '') + btn(PAGES[6]) + btn(PAGES[7]);
+  } else {
+    html += btn(PAGES[5], atSheikh ? '<span class="count alert">' + n(atSheikh) + '</span>' : '');
   }
-  html += '<div class="sec">عام</div>';
-  html += PAGES.filter(function (p) { return !p.scoped && p.k !== 'home' && p.ok(); }).map(function (p) {
-    return btn(p, p.k === 'mine' && openMine ? '<span class="count">' + n(openMine) + '</span>' : '');
-  }).join('');
   $('nav').innerHTML = html;
   $('meBox').innerHTML = '<div class="avatar">' + initial(D.me.name) + '</div><div><b>' + esc(D.me.name) + '</b><span>' + esc(D.me.role) + '</span></div>' +
     '<button data-act="logout" title="خروج">' + icon('out') + '</button>';
@@ -519,10 +542,10 @@ function render() {
   $('pageTitle').innerHTML = page.scoped && PROJ ? '<span class="scope">' + pchip(PROJ) + ' ' + esc(page.t) + '</span>' : esc(page.t);
   $('pageSub').textContent = arDate(D.today) + (page.scoped && !PROJ ? ' · كل المشاريع' : '');
   document.title = title + ' — متابعة المراجعة';
-  var fn = { home: pHome, dash: pDash, mine: pMine, lectures: pLectures, send: pSend, reviewers: pReviewers, team: pTeam, log: pLog, settings: pSettings }[PAGE];
+  var fn = { home: pHome, dash: pDash, files: pFiles, upload: pUpload, log: pLog, sheikh: pSheikh, team: pTeam, settings: pSettings }[PAGE];
   $('view').innerHTML = fn();
-  if (PAGE === 'lectures') drawRows();
-  if (PAGE === 'send') initSend();
+  if (PAGE === 'files') drawRows();
+  if (PAGE === 'upload') initUpload();
 }
 
 function go(k) {
@@ -532,93 +555,75 @@ function go(k) {
   render(); window.scrollTo(0, 0);
 }
 
+function kpiRow(L, sub) {
+  return [
+    [ST.NEW, 'لسه ما اتبعتتش للشيخ', byStatus(L, ST.NEW).length, '#9aa3ab'],
+    [ST.SHEIKH, 'عند الشيخ', byStatus(L, ST.SHEIKH).length, '#c99a2e'],
+    ['open', 'عند المراجعين', L.filter(isOpen).length, '#e8b730'],
+    ['late', 'متأخرة', L.filter(isLate).length, '#d4554a'],
+    [ST.DONE, 'مستنية التعديل', byStatus(L, ST.DONE).length, '#2f9e66'],
+    [ST.FIXED, 'مستنية الرفع', byStatus(L, ST.FIXED).length, '#3b7fc0'],
+    [ST.PUB, 'اتنشرت', byStatus(L, ST.PUB).length, '#7b68c8'],
+  ].map(function (k) { return '<button class="kpi" style="--c:' + k[3] + '" data-act="filter" data-st="' + k[0] + '"><b>' + n(k[2]) + '</b><span>' + k[1] + '</span><small>' + sub + '</small></button>'; }).join('');
+}
+function freshBanner(L) {
+  var fresh = byStatus(L, ST.NEW).length;
+  if (!fresh) return '';
+  return '<div class="card banner"><div><b>📨 عندك ' + n(fresh) + ' ملف جديد لسه ما اتبعتش للشيخ.</b><div class="small muted">كل ملف هيروح للشيخ في رسالة لوحده باسمه ورابطه.</div></div>' +
+    '<button class="btn primary" data-act="send-new">ابعتهم للشيخ</button></div>';
+}
+
 // ---------- كل المشاريع ----------
 function pHome() {
   var ps = projs();
-  if (!ps.length) return '<div class="card empty"><span class="big">🗂</span>مفيش مشاريع مفعّلة ليك.</div>';
+  if (!ps.length) return '<div class="card empty"><span class="big">🗂</span>مفيش مشاريع مفعّلة.</div>';
   var L = D.lectures.filter(function (l) { return ps.some(function (p) { return p.name === l.project; }); });
-  var by = function (st) { return L.filter(function (l) { return l.status === st; }).length; };
-  var late = L.filter(isLate);
   var hour = new Date().getHours();
-  var kpis = [
-    ['open', 'عند المراجعين', L.filter(isOpen).length, '#e8b730'], ['late', 'متأخرة', late.length, '#d4554a'],
-    [ST.DONE, 'مستنية التعديل', by(ST.DONE), '#2f9e66'], [ST.FIXED, 'مستنية الرفع', by(ST.FIXED), '#3b7fc0'], [ST.PUB, 'اتنشرت', by(ST.PUB), '#7b68c8'],
-  ].map(function (k) { return '<button class="kpi" style="--c:' + k[3] + '" data-act="filter" data-st="' + k[0] + '"><b>' + n(k[2]) + '</b><span>' + k[1] + '</span><small>كل المشاريع</small></button>'; }).join('');
   var cards = ps.map(function (p) {
     var pl = L.filter(function (l) { return l.project === p.name; });
     var c = function (f) { return pl.filter(f).length; };
     var pLate = c(isLate), nd = p.nextWorkDay, ndd = nd ? diff(D.today, nd) : null;
     return '<button class="pcard" style="--pc:' + esc(p.color) + '" data-act="proj" data-p="' + esc(p.name) + '"><div class="band"></div>' +
       '<div class="ph"><div class="ico">' + icon('folder') + '</div><div><b>' + esc(p.name) + '</b><span>' + n(pl.length) + ' ' + esc(p.item) + ' في النظام</span></div></div>' +
-      '<div class="pst"><div><b>' + n(c(isOpen)) + '</b><span>عند المراجع</span></div><div><b style="color:' + (pLate ? 'var(--bad)' : 'inherit') + '">' + n(pLate) + '</b><span>متأخرة</span></div>' +
-      '<div><b>' + n(c(function (l) { return l.status === ST.DONE; })) + '</b><span>للتعديل</span></div><div><b>' + n(c(function (l) { return l.status === ST.PUB; })) + '</b><span>اتنشرت</span></div></div>' +
+      '<div class="pst"><div><b>' + n(c(function (l) { return l.status === ST.SHEIKH || l.status === ST.NEW; })) + '</b><span>قبل التوزيع</span></div><div><b>' + n(c(isOpen)) + '</b><span>عند المراجع</span></div>' +
+      '<div><b style="color:' + (pLate ? 'var(--bad)' : 'inherit') + '">' + n(pLate) + '</b><span>متأخرة</span></div><div><b>' + n(c(function (l) { return l.status === ST.DONE; })) + '</b><span>للتعديل</span></div></div>' +
       '<div class="pf"><span>يوم الشغل الجاي</span><b>' + (nd ? arDate(nd, true) + (ndd === 0 ? ' — النهارده' : ndd === 1 ? ' — بكرة' : '') : '—') + '</b></div></button>';
   }).join('');
-  var lateList = late.slice().sort(function (a, b) { return b.lateDays - a.lateDays; }).slice(0, 6);
+  var late = L.filter(isLate).sort(function (a, b) { return b.lateDays - a.lateDays; }).slice(0, 6);
   return '<div class="hello"><div><h2>' + (hour < 12 ? 'صباح الخير' : 'مساء الخير') + '، ' + esc(D.me.name) + '</h2>' +
-    '<p>كل مشاريع المراجعة في مكان واحد. اختار مشروع عشان تدخل على صفحته.</p></div></div>' +
-    '<div class="kpis">' + kpis + '</div>' +
+    '<p>ارفع الملفات، وابعتها للشيخ، وتابع المراجعات لحد النشر.</p></div>' +
+    '<button class="btn primary" data-act="go" data-k="upload">' + icon('plus') + 'رفع ملفات</button></div>' +
+    freshBanner(L) + '<div class="kpis">' + kpiRow(L, 'كل المشاريع') + '</div>' +
     '<h3 style="color:var(--navy);margin:24px 0 12px">المشاريع (' + n(ps.length) + ')</h3><div class="pcards">' + cards + '</div>' +
     '<div class="grid g2" style="margin-top:18px"><div class="card"><h3>المتأخر في كل المشاريع</h3>' +
-    (lateList.length ? '<div class="rows">' + lateList.map(function (l) {
+    (late.length ? '<div class="rows">' + late.map(function (l) {
       return '<div class="row" data-act="lec" data-id="' + l.id + '"><div class="grow"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.reviewer) + '</div></div>' + pchip(l.project) + '<span class="chip due-late">' + rel(l.due) + '</span></div>';
     }).join('') + '</div>' : '<div class="empty"><span class="big">👌</span>مفيش أي تأخير</div>') + '</div>' +
-    '<div class="card"><h3>آخر النشاط<a class="more" href="#" data-act="go" data-k="log">السجل كامل</a></h3>' + actList(scopedLog().slice(0, 8)) + '</div></div>';
+    '<div class="card"><h3>آخر النشاط<a class="more" href="#" data-act="go" data-k="log">السجل كامل</a></h3>' + actList(D.log.slice(0, 8)) + '</div></div>';
 }
 
-// ---------- لوحة التحكم ----------
+// ---------- لوحة التحكم (مشروع أو الكل) ----------
 function pDash() {
-  var L = scoped(), open = L.filter(isOpen), late = L.filter(isLate);
-  var by = function (st) { return L.filter(function (l) { return l.status === st; }); };
-  var hour = new Date().getHours();
+  var L = scoped(), open = L.filter(isOpen);
   var nd = PROJ ? projOf(PROJ).nextWorkDay : D.nextWorkDay, ndd = nd ? diff(D.today, nd) : null;
-
-  var kpis = [
-    ['open', 'عند المراجعين', open.length, late.length ? 'منها ' + n(late.length) + ' متأخرة' : 'كله في الميعاد', '#e8b730'],
-    ['late', 'متأخرة', late.length, late.length ? 'محتاجة متابعة' : 'مفيش تأخير 👌', '#d4554a'],
-    [ST.DONE, 'مستنية التعديل', by(ST.DONE).length, 'الملاحظات وصلت', '#2f9e66'],
-    [ST.FIXED, 'مستنية الرفع', by(ST.FIXED).length, 'اتعدّلت', '#3b7fc0'],
-    [ST.PUB, 'اتنشرت', by(ST.PUB).length, 'على يوتيوب', '#7b68c8'],
-  ].map(function (k) {
-    return '<button class="kpi" style="--c:' + k[4] + '" data-act="filter" data-st="' + k[0] + '"><b>' + n(k[2]) + '</b><span>' + k[1] + '</span><small>' + k[3] + '</small></button>';
-  }).join('');
-
-  var upcoming = open.slice().sort(function (a, b) { return (a.due || '9') < (b.due || '9') ? -1 : 1; }).slice(0, 7);
-  var upHtml = upcoming.length ? '<div class="rows">' + upcoming.map(function (l) {
-    return '<div class="row" data-act="lec" data-id="' + l.id + '"><div class="avatar">' + initial(l.reviewer) + '</div>' +
-      '<div class="grow"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.reviewer) + ' · ' + arDate(l.due) + '</div></div>' +
-      (PROJ ? '' : pchip(l.project)) + '<span class="chip ' + relClass(l.due) + '">' + rel(l.due) + '</span></div>';
-  }).join('') + '</div>' : '<div class="empty"><span class="big">🎉</span>مفيش مراجعات مفتوحة دلوقتي</div>';
-
-  // آخر دفعة
-  var sentDays = L.filter(function (l) { return l.sent; }).map(function (l) { return l.sent; }).sort().reverse();
-  var batchHtml = '<div class="empty">لسه مفيش دفعات</div>';
-  if (sentDays.length) {
-    var bd = sentDays[0], batch = L.filter(function (l) { return l.sent === bd; });
-    var dn = batch.filter(function (l) { return !isOpen(l) && l.status !== ST.NEW; }).length;
-    batchHtml = '<div class="rate"><span>' + arDate(bd) + '</span><span>' + n(dn) + ' من ' + n(batch.length) + ' اتسلّمت</span></div>' +
-      '<div class="progress"><i style="width:' + Math.round(dn * 100 / batch.length) + '%"></i></div>' +
-      '<div class="rows" style="margin-top:8px">' + batch.map(function (l) {
-        return '<div class="row" data-act="lec" data-id="' + l.id + '"><div class="grow"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.reviewer) + '</div></div>' + chip(l.status) + '</div>';
-      }).join('') + '</div>';
-  }
-
-  var stages = [ST.NEW, ST.SENT, ST.LATE, ST.DONE, ST.FIXED, ST.PUB];
-  var total = L.length || 1;
+  var upcoming = open.slice().sort(function (a, b) { return (a.due || '9') < (b.due || '9') ? -1 : 1; }).slice(0, 8);
+  var stages = [ST.NEW, ST.SHEIKH, ST.SENT, ST.LATE, ST.DONE, ST.FIXED, ST.PUB], total = L.length || 1;
   var pipe = '<div class="pipe">' + stages.map(function (s) {
-    var c = by(s).length; return c ? '<i style="width:' + (c * 100 / total) + '%;background:' + ST_COLOR[s] + '" title="' + s + '"></i>' : '';
+    var c = byStatus(L, s).length; return c ? '<i style="width:' + (c * 100 / total) + '%;background:' + ST_COLOR[s] + '" title="' + s + '"></i>' : '';
   }).join('') + '</div><div class="legend">' + stages.map(function (s) {
-    return '<span><span class="dot" style="background:' + ST_COLOR[s] + '"></span>' + s + '</span><b>' + n(by(s).length) + '</b>';
+    return '<span><span class="dot" style="background:' + ST_COLOR[s] + '"></span>' + s + '</span><b>' + n(byStatus(L, s).length) + '</b>';
   }).join('') + '</div>';
-
-  return '<div class="hello"><div><h2>' + (hour < 12 ? 'صباح الخير' : 'مساء الخير') + '، ' + esc(D.me.name) + '</h2>' +
-    '<p>' + (PROJ ? 'ملخص مشروع «' + esc(PROJ) + '» النهارده.' : 'ملخص كل المشاريع النهارده.') + '</p></div>' +
+  return '<div class="hello"><div><h2>' + (PROJ ? esc(PROJ) : 'كل المشاريع') + '</h2><p>' + (PROJ ? 'ملخص المشروع النهارده.' : 'ملخص كل المشاريع النهارده.') + '</p></div>' +
     (nd ? '<div class="nextday">' + icon('cal') + '<div><span>يوم الشغل الجاي</span><b>' + arDate(nd) + (ndd === 0 ? ' — النهارده' : ndd === 1 ? ' — بكرة' : ' — بعد ' + daysTxt(ndd)) + '</b></div></div>' : '') + '</div>' +
-    '<div class="kpis">' + kpis + '</div>' +
-    '<div class="grid g2"><div class="card"><h3>التسليمات الجاية<a class="more" href="#" data-act="filter" data-st="open">الكل</a></h3>' + upHtml + '</div>' +
-    '<div class="card"><h3>آخر دفعة</h3>' + batchHtml + '</div></div>' +
-    '<div class="grid g2"><div class="card"><h3>آخر النشاط<a class="more" href="#" data-act="go" data-k="log">السجل كامل</a></h3>' + actList(D.log.slice(0, 8)) + '</div>' +
-    '<div class="card"><h3>مسار الشغل</h3>' + pipe + '</div></div>';
+    freshBanner(L) + '<div class="kpis">' + kpiRow(L, PROJ || 'كل المشاريع') + '</div>' +
+    '<div class="grid g2"><div class="card"><h3>عند المراجعين<a class="more" href="#" data-act="filter" data-st="open">الكل</a></h3>' +
+    (upcoming.length ? '<div class="rows">' + upcoming.map(function (l) {
+      return '<div class="row" data-act="lec" data-id="' + l.id + '"><div class="avatar">' + initial(l.reviewer) + '</div>' +
+        '<div class="grow"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.reviewer) + ' · ' + arDate(l.due) + '</div></div>' +
+        (PROJ ? '' : pchip(l.project)) + rcvChip(l) + '<span class="chip ' + relClass(l.due) + '">' + rel(l.due) + '</span></div>';
+    }).join('') + '</div>' : '<div class="empty"><span class="big">🎉</span>مفيش مراجعات مفتوحة</div>') + '</div>' +
+    '<div class="card"><h3>مسار الشغل</h3>' + pipe + '</div></div>' +
+    '<div class="card"><h3>آخر النشاط<a class="more" href="#" data-act="go" data-k="log">السجل كامل</a></h3>' + actList(scopedLog().slice(0, 8)) + '</div>';
 }
 
 function scopedLog() { return PROJ ? D.log.filter(function (a) { return a.project === PROJ; }) : D.log; }
@@ -632,53 +637,21 @@ function actList(items) {
   }).join('');
 }
 
-// ---------- مهامي ----------
-function pMine() {
-  var ls = mine();
-  var open = ls.filter(isOpen).sort(function (a, b) { return a.due < b.due ? -1 : 1; });
-  var closed = ls.filter(function (l) { return !isOpen(l); }).slice(0, 10);
-  if (!ls.length) return '<div class="card empty"><span class="big">📭</span>مفيش محاضرات متسجّلة باسمك لحد دلوقتي.<br><span class="small">أول ما يتبعتلك محاضرة هتظهر هنا وعلى البوت.</span></div>';
-  var card = function (l) {
-    var notes = noteList(l), open = isOpen(l);
-    return '<div class="card task' + (isLate(l) ? ' late' : open ? '' : ' closed') + '">' +
-      '<div class="head"><h4>' + esc(l.title) + '</h4>' + pchip(l.project) + (open ? '<span class="chip ' + relClass(l.due) + '">' + rel(l.due) + '</span>' : chip(l.status)) + '</div>' +
-      '<div class="small muted">موعد التسليم: ' + arDate(l.due) + (l.done ? ' · اتسلّمت ' + arDate(l.done) : '') + '</div>' +
-      (open ? '<div style="margin-top:12px"><textarea id="note-' + l.id + '" placeholder="اكتب ملاحظة… (مثلًا: الدقيقة ٣: خطأ في الآية)"></textarea></div>' : '') +
-      '<div class="bar">' +
-        (open ? '<button class="btn sm dark" data-act="note" data-id="' + l.id + '">إضافة الملاحظة</button><button class="btn sm primary" data-act="done" data-id="' + l.id + '">✅ تم التسليم</button>' : '') +
-        (/^https?:/.test(l.file) ? '<a class="btn sm" href="' + esc(l.file) + '" target="_blank" rel="noopener">' + icon('file') + 'ملف المحاضرة</a>' : '') +
-      '</div>' +
-      (notes.length || l.files.length ? '<details' + (open ? ' open' : '') + '><summary>ملاحظاتي (' + n(notes.length + l.files.length) + ')</summary><ul class="notes" style="margin-top:8px">' +
-        notes.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' + filesHtml(l.files) + '</details>' : '') +
-      '</div>';
-  };
-  return '<p class="muted small" style="margin-top:0">💡 الملفات والصور والرسائل الصوتية ابعتها من البوت كـ Reply على رسالة المحاضرة، والنص تقدر تكتبه هنا أو هناك.</p>' +
-    (open.length ? open.map(card).join('<div style="height:14px"></div>') : '<div class="card empty"><span class="big">🎉</span>مفيش حاجة مفتوحة عليك</div>') +
-    (closed.length ? '<h3 style="color:var(--navy);margin:26px 0 12px">اللي سلّمته</h3>' + closed.map(card).join('<div style="height:12px"></div>') : '');
-}
-function filesHtml(files) {
-  if (!files.length) return '';
-  return '<div class="files" style="margin-top:6px">' + files.map(function (f, i) {
-    return /^https?:/.test(f) ? '<a href="' + esc(f) + '" target="_blank" rel="noopener">' + icon('file') + 'ملف ' + n(i + 1) + '</a>' : '<span class="small muted">' + esc(f) + '</span>';
-  }).join('') + '</div>';
-}
-
-// ---------- المحاضرات ----------
-function pLectures() {
+// ---------- الملفات ----------
+function pFiles() {
   var L = scoped();
   var cnt = function (f) { return L.filter(f).length; };
   var segs = [
-    ['all', 'الكل', L.length], ['open', 'عند المراجعين', cnt(isOpen)], ['late', 'متأخرة', cnt(isLate)],
-    [ST.DONE, 'مستنية التعديل', cnt(function (l) { return l.status === ST.DONE; })],
-    [ST.FIXED, 'مستنية الرفع', cnt(function (l) { return l.status === ST.FIXED; })],
-    [ST.PUB, 'اتنشرت', cnt(function (l) { return l.status === ST.PUB; })],
+    ['all', 'الكل', L.length], [ST.NEW, 'جديدة', byStatus(L, ST.NEW).length], [ST.SHEIKH, 'عند الشيخ', byStatus(L, ST.SHEIKH).length],
+    ['open', 'عند المراجعين', cnt(isOpen)], ['late', 'متأخرة', cnt(isLate)], [ST.DONE, 'مستنية التعديل', byStatus(L, ST.DONE).length],
+    [ST.FIXED, 'مستنية الرفع', byStatus(L, ST.FIXED).length], [ST.PUB, 'اتنشرت', byStatus(L, ST.PUB).length],
   ];
   var revs = Array.from(new Set(L.map(function (l) { return l.reviewer; }).filter(Boolean)));
   return '<div class="toolbar"><div class="search">' + icon('search') + '<input type="search" id="q" placeholder="دوّر بالعنوان أو المراجع…" value="' + esc(F.q) + '"></div>' +
     '<select id="revFilter"><option value="">كل المراجعين</option>' + revs.map(function (r) { return '<option' + (r === F.rev ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select>' +
-    (can('send') ? '<button class="btn primary" data-act="go" data-k="send">' + icon('plus') + 'دفعة جديدة</button>' : '') + '</div>' +
+    '<button class="btn primary" data-act="go" data-k="upload">' + icon('plus') + 'رفع ملفات</button></div>' +
     '<div class="seg">' + segs.map(function (s) { return '<button class="' + (F.st === s[0] ? 'on' : '') + '" data-act="seg" data-st="' + s[0] + '">' + s[1] + '<em>' + n(s[2]) + '</em></button>'; }).join('') + '</div>' +
-    '<div class="card tablecard"><table class="tbl stack"><thead><tr><th>#</th><th>العنوان</th>' + (PROJ ? '' : '<th>المشروع</th>') + '<th>المراجع</th><th>أُرسلت</th><th>التسليم</th><th>الملاحظات</th><th>الحالة</th></tr></thead><tbody id="rows"></tbody></table></div>';
+    '<div class="card tablecard"><table class="tbl stack"><thead><tr><th>#</th><th>العنوان</th>' + (PROJ ? '' : '<th>المشروع</th>') + '<th>المراجع</th><th>التسليم</th><th>الملاحظات</th><th>الحالة</th></tr></thead><tbody id="rows"></tbody></table></div>';
 }
 function filtered() {
   var q = F.q.trim();
@@ -696,154 +669,169 @@ function drawRows() {
   $('rows').innerHTML = ls.length ? ls.map(function (l) {
     var nn = noteList(l).length + l.files.length;
     return '<tr data-act="lec" data-id="' + l.id + '"><td class="num">' + n(l.id || '') + '</td><td class="ttl">' + esc(l.title) + '</td>' + (PROJ ? '' : '<td class="hide-m">' + pchip(l.project) + '</td>') +
-      '<td class="sub">' + esc(l.reviewer) + (isOpen(l) ? ' · <span class="chip ' + relClass(l.due) + '">' + rel(l.due) + '</span>' : '') + '</td>' +
-      '<td class="hide-m">' + arDate(l.sent, true) + '</td><td class="hide-m">' + arDate(l.due, true) + '</td>' +
+      '<td class="sub">' + (l.reviewer ? esc(l.reviewer) : '<span class="muted">—</span>') + (isOpen(l) ? ' · <span class="chip ' + relClass(l.due) + '">' + rel(l.due) + '</span>' : '') + '</td>' +
+      '<td class="hide-m">' + (l.due ? arDate(l.due, true) : '—') + '</td>' +
       '<td class="hide-m">' + (nn ? n(nn) : '<span class="muted">—</span>') + '</td><td class="stc">' + chip(l.status) + '</td></tr>';
   }).join('') : '<tr><td colspan="8"><div class="empty">مفيش حاجة بالفلتر ده</div></td></tr>';
 }
 
-// ---------- تفاصيل محاضرة ----------
+// ---------- تفاصيل ملف ----------
+function reviewerOptions(sel) { return '<option value="">— اختار المراجع —</option>' + D.reviewers.map(function (r) { return '<option' + (r === sel ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join(''); }
 function openLecture(id) {
   var l = D.lectures.filter(function (x) { return x.id === Number(id); })[0];
   if (!l) return;
-  var notes = noteList(l), open = isOpen(l), mineL = l.mine;
+  var notes = noteList(l), open = isOpen(l), pre = l.status === ST.NEW || l.status === ST.SHEIKH;
+  var actions = '';
+  if (pre && can('assign')) {
+    actions += '<div class="card" style="padding:14px"><b>👤 توزيع على مراجع</b><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
+      '<select id="dRev">' + reviewerOptions('') + '</select><input type="date" id="dDue" value="' + esc(projOf(l.project).defaultDue || '') + '"></div>' +
+      '<button class="btn primary" style="margin-top:10px" data-act="assign-one" data-id="' + l.id + '">' + icon('send') + 'ابعت للمراجع</button></div>';
+  }
+  var bar = '';
+  if (l.status === ST.NEW && D.me.isOwner) bar += '<button class="btn sm primary" data-act="send-one" data-id="' + l.id + '">📨 ابعت للشيخ</button>';
+  if (pre && D.me.isOwner) bar += '<button class="btn sm" data-act="del-file" data-id="' + l.id + '">🗑 مسح</button>';
+  if (open && can('assign')) bar += '<button class="btn sm" data-act="nudge" data-id="' + l.id + '">🔔 نبّه ' + esc(l.reviewer) + '</button>';
   var opts = D.statuses.map(function (s) { return '<option' + (s === l.status ? ' selected' : '') + '>' + s + '</option>'; }).join('');
   $('drawer').innerHTML = '<header><h2>' + esc(l.title) + '</h2>' + chip(l.status) +
     '<button class="btn icon ghost" data-act="close" aria-label="إغلاق">' + icon('x') + '</button></header><div class="body">' +
-    '<dl class="meta"><dt>المشروع</dt><dd>' + pchip(l.project) + '</dd><dt>الرقم</dt><dd>' + n(l.id) + '</dd><dt>المراجع</dt><dd>' + esc(l.reviewer || '—') + '</dd>' +
-    '<dt>أُرسلت</dt><dd>' + arDate(l.sent) + '</dd><dt>موعد التسليم</dt><dd>' + arDate(l.due) + (open ? ' · <span class="chip ' + relClass(l.due) + '">' + rel(l.due) + '</span>' : '') + '</dd>' +
-    '<dt>التذكير</dt><dd>' + (l.reminded ? 'اتبعت ✓' : open ? 'هيتبعت قبل الموعد بيوم' : '—') + '</dd>' +
-    '<dt>اتسلّمت</dt><dd>' + (l.done ? arDate(l.done) : '—') + '</dd></dl>' +
-    '<div class="bar" style="display:flex;gap:8px;flex-wrap:wrap;margin:16px 0">' +
-      (/^https?:/.test(l.file) ? '<a class="btn sm" href="' + esc(l.file) + '" target="_blank" rel="noopener">' + icon('file') + 'ملف المحاضرة</a>' : '') +
-      (open && (mineL || can('status')) ? '<button class="btn sm primary" data-act="done" data-id="' + l.id + '">✅ تسجيل التسليم</button>' : '') +
-    '</div>' +
-    (can('status') ? '<div class="card" style="padding:14px"><label class="lb">تغيير الحالة</label><div style="display:flex;gap:8px"><select id="stSel">' + opts + '</select>' +
+    '<dl class="meta"><dt>المشروع</dt><dd>' + pchip(l.project) + '</dd><dt>الملف</dt><dd>' + fileLink(l, 'فتح الملف ↗') + '</dd>' +
+    '<dt>المراجع</dt><dd>' + esc(l.reviewer || '—') + ' ' + rcvChip(l) + '</dd>' +
+    '<dt>أُرسل للمراجع</dt><dd>' + arDate(l.sent) + '</dd><dt>موعد التسليم</dt><dd>' + arDate(l.due) + (open ? ' · <span class="chip ' + relClass(l.due) + '">' + rel(l.due) + '</span>' : '') + '</dd>' +
+    '<dt>خلص المراجعة</dt><dd>' + (l.done ? arDate(l.done) : '—') + '</dd></dl>' +
+    (bar ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:16px 0">' + bar + '</div>' : '<div style="height:12px"></div>') + actions +
+    (D.me.isOwner && !pre ? '<div class="card" style="padding:14px"><label class="lb">تغيير الحالة</label><div style="display:flex;gap:8px"><select id="stSel">' + opts + '</select>' +
       '<button class="btn dark" data-act="setst" data-id="' + l.id + '">حفظ</button></div></div>' : '') +
     '<h3 style="color:var(--navy);margin:20px 0 10px;font-size:16px">الملاحظات (' + n(notes.length + l.files.length) + ')</h3>' +
-    (notes.length ? '<ul class="notes">' + notes.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<p class="muted small">لسه مفيش ملاحظات مكتوبة.</p>') +
+    (notes.length ? '<ul class="notes">' + notes.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<p class="muted small">لسه مفيش ملاحظات.</p>') +
     filesHtml(l.files) +
-    ((mineL || can('status')) ? '<div style="margin-top:14px"><textarea id="note-' + l.id + '" placeholder="أضف ملاحظة…"></textarea><button class="btn sm dark" style="margin-top:8px" data-act="note" data-id="' + l.id + '">إضافة الملاحظة</button></div>' : '') +
+    (D.me.isOwner && !pre ? '<div style="margin-top:14px"><textarea id="note-' + l.id + '" placeholder="أضف ملاحظة…"></textarea><button class="btn sm dark" style="margin-top:8px" data-act="note" data-id="' + l.id + '">إضافة الملاحظة</button></div>' : '') +
     '</div>';
   $('drawer').classList.remove('hidden'); $('veil').classList.remove('hidden');
   $('drawer').dataset.id = l.id;
 }
 function closeAll() { $('drawer').classList.add('hidden'); $('veil').classList.add('hidden'); $('side').classList.remove('open'); $('drawer').dataset.id = ''; }
-
-// ---------- إرسال دفعة ----------
-function sendProj() { var el = $('sendProj'); return el ? el.value : (PROJ || (projs()[0] || {}).name || ''); }
-function pSend() {
-  var ps = projs(), cur = PROJ || (ps[0] || {}).name || '';
-  var P = projOf(cur);
-  return '<div class="card"><h3>دفعة جديدة للمراجعة</h3>' +
-    '<div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:14px"><div style="min-width:220px"><label class="lb">المشروع</label>' +
-    '<select id="sendProj">' + ps.map(function (p) { return '<option' + (p.name === cur ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</select></div>' +
-    '<p class="muted small" style="margin:0 0 8px">الموعد بيتحسب لوحده على يوم الشغل الجاي للمشروع (<b id="sendDue">' + arDate(P.defaultDue) + '</b>)، وتقدر تغيّره.</p></div>' +
-    '<div id="items"></div><div style="display:flex;gap:10px;flex-wrap:wrap">' +
-    '<button class="btn" data-act="add-item">' + icon('plus') + 'عنصر</button>' +
-    '<button class="btn primary" id="sendBtn" data-act="send">' + icon('send') + 'ابعت للمراجعين</button></div>' +
-    '<div id="sendResult"></div></div>' +
-    (D.reviewers.length ? '' : '<div class="card"><b>مفيش مراجعين نشطين.</b> <span class="muted">كل مراجع يفتح البوت ويضغط Start، وبعدها هيظهر هنا.</span></div>');
+function filesHtml(files) {
+  if (!files.length) return '';
+  return '<div class="files" style="margin-top:6px">' + files.map(function (f, i) {
+    return /^https?:/.test(f) ? '<a href="' + esc(f) + '" target="_blank" rel="noopener">' + icon('file') + 'ملف ' + n(i + 1) + '</a>' : '<span class="small muted">' + esc(f) + '</span>';
+  }).join('') + '</div>';
 }
-function blank() { return { title: '', link: '', reviewer: '', due: projOf(sendProj()).defaultDue }; }
+
+// ---------- رفع ملفات (المودريتور) ----------
+function upProj() { var el = $('upProj'); return el ? el.value : (PROJ || (projs()[0] || {}).name || ''); }
+function pUpload() {
+  var ps = projs(), cur = PROJ || (ps[0] || {}).name || '';
+  var fresh = D.lectures.filter(function (l) { return l.status === ST.NEW; });
+  return (D.sheikhs && D.sheikhs.length ? '' : '<div class="card banner warn"><b>⚠️ لسه مفيش شيخ متحدد.</b> <span class="muted">حدّده من صفحة «الفريق» عشان الملفات توصله.</span></div>') +
+    '<div class="card"><h3>' + icon('send') + 'رفع ملفات جديدة</h3>' +
+    '<p class="muted small" style="margin-top:-6px">حط عنوان كل ملف ورابطه على Drive. الملف لازم يكون على حساب البوت أو متشارك معاه.</p>' +
+    '<div style="max-width:260px;margin-bottom:12px"><label class="lb">المشروع</label><select id="upProj">' +
+    ps.map(function (p) { return '<option' + (p.name === cur ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</select></div>' +
+    '<div id="items"></div><div style="display:flex;gap:10px;flex-wrap:wrap">' +
+    '<button class="btn" data-act="add-item">' + icon('plus') + 'ملف</button>' +
+    '<button class="btn" data-act="save-files">💾 حفظ بس</button>' +
+    '<button class="btn primary" data-act="save-files" data-send="1">📨 حفظ وابعت للشيخ</button></div>' +
+    '<div id="upResult"></div></div>' +
+    '<div class="card"><h3>📨 جديدة لسه ما اتبعتتش للشيخ (' + n(fresh.length) + ')' + (fresh.length ? '<button class="btn sm primary more" data-act="send-new">ابعت الكل للشيخ</button>' : '') + '</h3>' +
+    (fresh.length ? '<div class="rows">' + fresh.map(function (l) {
+      return '<div class="row"><div class="grow"><div class="t">' + esc(l.title) + '</div><div class="s">' + fileLink(l, 'الرابط ↗') + '</div></div>' + pchip(l.project) +
+        '<button class="btn sm" data-act="send-one" data-id="' + l.id + '">📨 ابعت</button><button class="btn sm ghost" data-act="del-file" data-id="' + l.id + '" title="مسح">🗑</button></div>';
+    }).join('') + '</div>' : '<div class="empty">كل الملفات اتبعتت للشيخ 👌</div>') + '</div>';
+}
+function blank() { return { title: '', link: '' }; }
 function readItems() {
   return Array.prototype.map.call(document.querySelectorAll('#items .item'), function (el) {
-    return { title: el.querySelector('[name=title]').value, link: el.querySelector('[name=link]').value,
-      reviewer: el.querySelector('[name=rev]').value, due: el.querySelector('[name=due]').value, error: el.dataset.error || '' };
+    return { title: el.querySelector('[name=title]').value, link: el.querySelector('[name=link]').value, error: el.dataset.error || '' };
   });
 }
 function drawItems(items) {
   $('items').innerHTML = items.map(function (it, i) {
-    return '<div class="item' + (it.error ? ' err' : '') + '" data-error="' + esc(it.error || '') + '"><div class="n">' + n(i + 1) + '</div>' +
-      '<div><label class="lb">عنوان ال' + esc(projOf(sendProj()).item) + '</label><input name="title" value="' + esc(it.title) + '" placeholder="العنوان"></div>' +
-      '<div><label class="lb">رابط الملف على Drive</label><input name="link" dir="ltr" value="' + esc(it.link) + '" placeholder="https://drive.google.com/file/d/…"></div>' +
-      '<div><label class="lb">المراجع</label><select name="rev"><option value="">— اختار —</option>' + D.reviewers.map(function (r) {
-        return '<option' + (r === it.reviewer ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select></div>' +
-      '<div><label class="lb" style="display:flex;justify-content:space-between">موعد التسليم<button class="rm" data-act="rm-item" data-i="' + i + '" title="شيل">×</button></label>' +
-      '<input type="date" name="due" value="' + esc(it.due || '') + '"><div class="hint">' + (it.due ? arDate(it.due) : '') + '</div></div>' +
+    return '<div class="item up' + (it.error ? ' err' : '') + '" data-error="' + esc(it.error || '') + '"><div class="n">' + n(i + 1) + '</div>' +
+      '<div><label class="lb">العنوان</label><input name="title" value="' + esc(it.title) + '" placeholder="مثلًا: المجلس ٣٢ — الشركة"></div>' +
+      '<div><label class="lb" style="display:flex;justify-content:space-between">رابط الملف على Drive<button class="rm" data-act="rm-item" data-i="' + i + '" title="شيل">×</button></label>' +
+      '<input name="link" dir="ltr" value="' + esc(it.link) + '" placeholder="https://drive.google.com/file/d/…"></div>' +
       (it.error ? '<div class="msg">' + esc(it.error) + '</div>' : '') + '</div>';
   }).join('');
 }
 function saveDraft() { try { localStorage.setItem(DRAFT, JSON.stringify(readItems())); } catch (e) {} }
-function initSend() {
+function initUpload() {
   var d = null; try { d = JSON.parse(localStorage.getItem(DRAFT) || 'null'); } catch (e) {}
-  drawItems(Array.isArray(d) && d.length ? d : [blank(), blank(), blank(), blank()]);
+  drawItems(Array.isArray(d) && d.length && d[0].reviewer === undefined ? d : [blank(), blank(), blank(), blank()]);
 }
 
-// ---------- المراجعون ----------
-function stats(name) {
-  var ls = scoped().filter(function (l) { return l.reviewer === name; });
-  var deliv = ls.filter(function (l) { return l.done; });
-  var onTime = deliv.filter(function (l) { return !l.due || l.done <= l.due; }).length;
-  var durs = deliv.filter(function (l) { return l.sent; }).map(function (l) { return diff(l.sent, l.done); });
-  return { total: ls.length, open: ls.filter(isOpen).length, late: ls.filter(isLate).length, deliv: deliv.length,
-    rate: deliv.length ? Math.round(onTime * 100 / deliv.length) : null,
-    avg: durs.length ? durs.reduce(function (a, b) { return a + b; }, 0) / durs.length : null,
-    last: deliv.map(function (l) { return l.done; }).sort().pop() };
-}
-function pReviewers() {
-  var names = D.team.filter(function (m) { return m.active; }).map(function (m) { return m.name; });
-  scoped().forEach(function (l) { if (l.reviewer && names.indexOf(l.reviewer) === -1) names.push(l.reviewer); });
-  var people = names.map(function (nm) { return { m: D.team.filter(function (x) { return x.name === nm; })[0] || { name: nm, role: 'مراجع' }, s: stats(nm) }; })
-    .filter(function (p) { return p.s.total || p.m.role === 'مراجع'; })
-    .sort(function (a, b) { return b.s.open - a.s.open || b.s.total - a.s.total; });
-  if (!people.length) return '<div class="card empty"><span class="big">👥</span>لسه مفيش مراجعين. كل مراجع يفتح البوت ويضغط Start.</div>';
-  return '<div class="revs">' + people.map(function (p) {
-    var s = p.s;
-    return '<div class="card rev"><div class="top2"><div class="avatar">' + initial(p.m.name) + '</div><div style="flex:1"><b>' + esc(p.m.name) + '</b>' +
-      '<span class="small muted" dir="ltr">' + esc(p.m.username || '') + '</span></div>' + roleChip(p.m.role) + '</div>' +
-      '<div class="stats"><div><b>' + n(s.open) + '</b><span>مفتوحة</span></div><div><b style="color:' + (s.late ? 'var(--bad)' : 'inherit') + '">' + n(s.late) + '</b><span>متأخرة</span></div><div><b>' + n(s.deliv) + '</b><span>اتسلّمت</span></div></div>' +
-      '<div class="rate"><span>الالتزام بالمواعيد</span><b>' + (s.rate == null ? '—' : n(s.rate) + '٪') + '</b></div>' +
-      '<div class="progress"><i style="width:' + (s.rate || 0) + '%;background:' + (s.rate == null ? 'transparent' : s.rate >= 80 ? 'var(--ok)' : s.rate >= 50 ? '#e8b730' : 'var(--bad)') + '"></i></div>' +
-      '<div class="small muted" style="margin-top:10px">متوسط المراجعة: ' + (s.avg == null ? '—' : n(s.avg.toFixed(1).replace('.0', '')) + ' يوم') + ' · آخر تسليم: ' + (s.last ? arDate(s.last, true) : '—') + '</div>' +
-      (s.total ? '<button class="btn sm" style="margin-top:12px" data-act="rev-lecs" data-name="' + esc(p.m.name) + '">محاضراته (' + n(s.total) + ')</button>' : '') +
-      '</div>';
-  }).join('') + '</div>';
+// ---------- صفحة الشيخ ----------
+var SHP = '';
+function pSheikh() {
+  var ps = projs();
+  var L = D.lectures.filter(function (l) { return !SHP || l.project === SHP; });
+  var ready = L.filter(function (l) { return l.status === ST.SHEIKH || (l.status === ST.NEW && D.me.isOwner); });
+  var open = L.filter(isOpen).sort(function (a, b) { return (a.due || '9') < (b.due || '9') ? -1 : 1; });
+  var done = L.filter(function (l) { return l.done; }).sort(function (a, b) { return a.done < b.done ? 1 : -1; }).slice(0, 12);
+  var hour = new Date().getHours();
+  var chips = '<div class="seg"><button class="' + (!SHP ? 'on' : '') + '" data-act="shp" data-p="">كل المشاريع<em>' + n(D.lectures.filter(function (l) { return l.status === ST.SHEIKH; }).length) + '</em></button>' +
+    ps.map(function (p) { var c = D.lectures.filter(function (l) { return l.project === p.name && l.status === ST.SHEIKH; }).length;
+      return '<button class="' + (SHP === p.name ? 'on' : '') + '" data-act="shp" data-p="' + esc(p.name) + '">' + esc(p.name) + (c ? '<em>' + n(c) + '</em>' : '') + '</button>'; }).join('') + '</div>';
+  var readyHtml = ready.length ? '<div class="asg-head"><span>الملف</span><span>المراجع</span><span>موعد التسليم</span></div>' + ready.map(function (l) {
+    return '<div class="asg" data-id="' + l.id + '"><div class="grow"><div class="t">' + esc(l.title) + ' ' + fileLink(l) + '</div><div class="s">' + pchip(l.project) + (l.status === ST.NEW ? ' <span class="chip st-new">لسه ما اتبعتش للشيخ</span>' : '') + '</div></div>' +
+      '<select name="rev">' + reviewerOptions('') + '</select><input type="date" name="due" value="' + esc(projOf(l.project).defaultDue || '') + '"></div>';
+  }).join('') + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px">' +
+    '<select id="asgAll" style="width:auto"><option value="">وزّع الكل على…</option>' + D.reviewers.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('') + '</select>' +
+    '<button class="btn primary" data-act="assign-rows">' + icon('send') + 'ابعت للمراجعين</button><span class="small muted">الملف اللي ما اخترتلوش مراجع هيفضل هنا.</span></div>' +
+    '<div id="asgResult"></div>'
+    : '<div class="empty"><span class="big">👌</span>مفيش ملفات مستنية توزيع</div>';
+  var openHtml = open.length ? '<div class="rows">' + open.map(function (l) {
+    return '<div class="row"><div class="grow" data-act="lec" data-id="' + l.id + '"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.reviewer) + ' · ' + pchip(l.project) + '</div></div>' +
+      rcvChip(l) + '<span class="chip ' + relClass(l.due) + '">' + rel(l.due) + '</span><button class="btn sm" data-act="nudge" data-id="' + l.id + '">🔔 نبّه</button></div>';
+  }).join('') + '</div>' : '<div class="empty">مفيش حد عنده مراجعة دلوقتي</div>';
+  var doneHtml = done.length ? '<div class="rows">' + done.map(function (l) {
+    var nn = noteList(l).length + l.files.length;
+    return '<div class="row" data-act="lec" data-id="' + l.id + '"><div class="grow"><div class="t">' + esc(l.title) + '</div><div class="s">' + esc(l.reviewer) + ' · خلص ' + arDate(l.done, true) + '</div></div>' +
+      pchip(l.project) + '<span class="chip">' + n(nn) + ' ملاحظة</span></div>';
+  }).join('') + '</div>' : '<div class="empty">لسه محدش خلص</div>';
+  var names = Array.from(new Set(D.reviewers.concat(L.map(function (l) { return l.reviewer; }).filter(Boolean))));
+  var revHtml = names.map(function (nm) {
+    var ls = L.filter(function (l) { return l.reviewer === nm; });
+    var dl = ls.filter(function (l) { return l.done; }), ok = dl.filter(function (l) { return !l.due || l.done <= l.due; }).length;
+    var rate = dl.length ? Math.round(ok * 100 / dl.length) : null;
+    return '<div class="revmini"><div class="avatar">' + initial(nm) + '</div><div class="grow"><b>' + esc(nm) + '</b><div class="s small muted">عنده ' + n(ls.filter(isOpen).length) + ' · متأخر ' + n(ls.filter(isLate).length) + ' · خلص ' + n(dl.length) + '</div></div>' +
+      '<b class="small">' + (rate == null ? '—' : n(rate) + '٪') + '</b></div>';
+  }).join('');
+  return '<div class="hello"><div><h2>' + (hour < 12 ? 'صباح الخير' : 'مساء الخير') + (D.me.isSheikh ? ' يا شيخ ' : '، ') + esc(D.me.name) + '</h2>' +
+    '<p>الملفات اللي المودريتور بعتها بتظهر هنا. اختار لكل ملف المراجع، والبوت هيبعتهوله على طول.</p></div></div>' + chips +
+    '<div class="kpis k4"><div class="kpi" style="--c:#c99a2e"><b>' + n(ready.length) + '</b><span>مستنية التوزيع</span></div><div class="kpi" style="--c:#e8b730"><b>' + n(open.length) + '</b><span>عند المراجعين</span></div>' +
+    '<div class="kpi" style="--c:#d4554a"><b>' + n(L.filter(isLate).length) + '</b><span>متأخرة</span></div><div class="kpi" style="--c:#2f9e66"><b>' + n(L.filter(function (l) { return l.done; }).length) + '</b><span>خلصت</span></div></div>' +
+    '<div class="card"><h3>📥 مستنية التوزيع (' + n(ready.length) + ')</h3>' + readyHtml + '</div>' +
+    '<div class="grid g2"><div class="card"><h3>⏳ عند المراجعين (' + n(open.length) + ')</h3>' + openHtml + '</div>' +
+    '<div class="card"><h3>👥 المراجعون</h3>' + (revHtml || '<div class="empty">لسه مفيش مراجعين</div>') + '</div></div>' +
+    '<div class="card"><h3>✅ خلصت مؤخرًا</h3>' + doneHtml + '</div>';
 }
 
-// ---------- الفريق والصلاحيات ----------
-function canEditMember(m) { return D.me.isOwner ? m.role !== 'مالك' || m.chat === D.me.chat : can('team') && m.role === 'مراجع'; }
+// ---------- الفريق (المودريتور) ----------
 function pTeam() {
+  var actP = (D.projects || []).filter(function (p) { return p.active; });
   var rows = D.team.map(function (m) {
-    var edit = canEditMember(m), isOwnerRow = m.role === 'مالك';
-    var roleCell = D.me.isOwner && !isOwnerRow
-      ? '<select data-mem="role" data-chat="' + esc(m.chat) + '" style="width:auto"><option' + (m.role === 'مدير' ? ' selected' : '') + '>مدير</option><option' + (m.role === 'مراجع' ? ' selected' : '') + '>مراجع</option></select>'
-      : roleChip(m.role);
-    var notifyCell = m.role === 'مراجع' ? '<span class="muted small">—</span>'
-      : '<label class="toggle"><input type="checkbox" data-mem="notify" data-chat="' + esc(m.chat) + '"' + (m.notify ? ' checked' : '') + (edit ? '' : ' disabled') + '><span></span></label>';
-    var actP = (D.projects || []).filter(function (p) { return p.active; });
-    var projCell = m.role === 'مالك' ? '<span class="muted small">كل المشاريع</span>'
-      : D.me.isOwner ? actP.map(function (p) { var on = (m.projects || []).indexOf(p.name) !== -1;
-          return '<button class="ptog' + (on ? ' on' : '') + '" style="--pc:' + esc(p.color) + '" data-act="mem-proj" data-chat="' + esc(m.chat) + '" data-p="' + esc(p.name) + '">' + esc(p.name) + '</button>'; }).join('') +
-          ((m.projects || []).length ? '' : '<div class="small muted">كل المشاريع</div>')
-      : '<span class="small">' + ((m.projects || []).length ? m.projects.map(esc).join('، ') : 'كل المشاريع') + '</span>';
+    var isMod = m.role === 'مودريتور', isSh = m.role === 'الشيخ';
+    var roleCell = isMod ? roleChip('مودريتور')
+      : '<select data-mem="role" data-chat="' + esc(m.chat) + '" style="width:auto"><option' + (isSh ? ' selected' : '') + '>الشيخ</option><option' + (!isSh ? ' selected' : '') + '>مراجع</option></select>';
+    var notifyCell = isMod || isSh ? '<label class="toggle"><input type="checkbox" data-mem="notify" data-chat="' + esc(m.chat) + '"' + (m.notify ? ' checked' : '') + '><span></span></label>' : '<span class="muted small">—</span>';
+    var projCell = isSh ? actP.map(function (p) { var on = (m.projects || []).indexOf(p.name) !== -1;
+        return '<button class="ptog' + (on ? ' on' : '') + '" style="--pc:' + esc(p.color) + '" data-act="mem-proj" data-chat="' + esc(m.chat) + '" data-p="' + esc(p.name) + '">' + esc(p.name) + '</button>'; }).join('') +
+        ((m.projects || []).length ? '' : '<div class="small muted">كل المشاريع</div>') : '<span class="muted small">—</span>';
     return '<tr><td><div style="display:flex;gap:10px;align-items:center"><div class="avatar">' + initial(m.name) + '</div>' +
-      (edit ? '<input class="member-name" data-mem="name" data-chat="' + esc(m.chat) + '" value="' + esc(m.name) + '">' : '<b>' + esc(m.name) + '</b>') + '</div></td>' +
+      '<input class="member-name" data-mem="name" data-chat="' + esc(m.chat) + '" value="' + esc(m.name) + '"></div></td>' +
       '<td dir="ltr" class="small muted" style="text-align:right">' + esc(m.username || '—') + '</td><td>' + roleCell + '</td>' +
-      '<td><label class="toggle"><input type="checkbox" data-mem="active" data-chat="' + esc(m.chat) + '"' + (m.active ? ' checked' : '') + (edit && !isOwnerRow ? '' : ' disabled') + '><span></span></label></td>' +
-      '<td>' + notifyCell + '</td><td style="min-width:220px">' + projCell + '</td><td class="small muted">' + arDate(m.joined, true) + '</td></tr>';
+      '<td><label class="toggle"><input type="checkbox" data-mem="active" data-chat="' + esc(m.chat) + '"' + (m.active ? ' checked' : '') + (isMod ? ' disabled' : '') + '><span></span></label></td>' +
+      '<td>' + notifyCell + '</td><td style="min-width:200px">' + projCell + '</td><td class="small muted">' + arDate(m.joined, true) + '</td></tr>';
   }).join('');
   var link = D.bot ? 'https://t.me/' + D.bot : '';
-  var P = D.permissions;
-  var permRows = P ? D.permsDef.map(function (p) {
-    var dis = D.me.isOwner ? '' : ' disabled';
-    return '<tr><td>' + esc(p.label) + '</td><td>✔️</td>' +
-      '<td><input type="checkbox" data-perm="manager" data-key="' + p.key + '"' + (P.manager[p.key] ? ' checked' : '') + dis + '></td>' +
-      '<td><input type="checkbox" data-perm="reviewer" data-key="' + p.key + '"' + (P.reviewer[p.key] ? ' checked' : '') + dis + '></td></tr>';
-  }).join('') : '';
-
-  return '<div class="card"><h3>' + icon('users') + 'أعضاء الفريق <span class="muted small" style="font-weight:500">(' + n(D.team.length) + ')</span></h3>' +
+  return '<div class="card"><h3>' + icon('users') + 'الفريق <span class="muted small" style="font-weight:500">(' + n(D.team.length) + ')</span></h3>' +
     (link ? '<div class="invite" style="margin-bottom:14px"><span>🔗 أي حد جديد يفتح البوت ويضغط <b>Start</b>، فيظهر هنا كمراجع:</span><code>' + esc(link) + '</code>' +
       '<button class="btn sm" data-act="copy" data-text="' + esc(link) + '">' + icon('copy') + 'نسخ</button></div>' : '') +
-    '<div class="scroll-x"><table class="tbl"><thead><tr><th>الاسم</th><th>تليجرام</th><th>الدور</th><th>نشط</th><th>يستلم الإشعارات</th><th>المشاريع</th><th>انضم</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-    '<p class="small muted" style="margin-bottom:0">«يستلم الإشعارات»: كل ملاحظة باسم صاحبها، وكل تسليم، وملخص الصبح في أيام الشغل (للمالك والمدراء). تغيير الاسم بيتطبّق على كل محاضراته. «المشاريع»: المدير بيشوف المشاريع اللي مختارة له بس، ولو مفيش ولا واحد مختار يبقى بيشوف الكل.</p></div>' +
-    '<div class="card"><h3>' + icon('shield') + 'الأدوار</h3><div class="rolesdesc">' +
-    '<div><b>' + roleChip('مالك') + '</b>كل الصلاحيات دايمًا، وهو اللي بيحدد الأدوار والصلاحيات. بيوصله تذكير بالليل قبل يوم الشغل.</div>' +
-    '<div><b>' + roleChip('مدير') + '</b>بيتابع الشغل حسب الصلاحيات اللي تحت. يقدر يدير المراجعين بس، مش المدراء.</div>' +
-    '<div><b>' + roleChip('مراجع') + '</b>بيشوف «مهامي» بس: محاضراته ومواعيدها، ويكتب ملاحظاته ويسلّم.</div></div></div>' +
-    (P ? '<div class="card"><h3>' + icon('shield') + 'الصلاحيات' + (D.me.isOwner ? '' : ' <span class="muted small" style="font-weight:500">(التعديل للمالك بس)</span>') + '</h3>' +
-      '<div class="scroll-x"><table class="tbl perm"><thead><tr><th>الصلاحية</th><th>مالك</th><th>مدير</th><th>مراجع</th></tr></thead><tbody>' + permRows + '</tbody></table></div>' +
-      (D.me.isOwner ? '<button class="btn primary" style="margin-top:14px" data-act="save-perms">حفظ الصلاحيات</button>' : '') + '</div>' : '');
+    '<div class="scroll-x"><table class="tbl"><thead><tr><th>الاسم</th><th>تليجرام</th><th>الدور</th><th>نشط</th><th>يستلم الملخص</th><th>مشاريع الشيخ</th><th>انضم</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>' +
+    '<div class="card"><h3>' + icon('shield') + 'مين بيعمل إيه</h3><div class="rolesdesc">' +
+    '<div><b>' + roleChip('مودريتور') + '</b>بيرفع الملفات ويبعتها للشيخ، وبتوصله رسايل «استلم» و«خلص» والملاحظات باسم كل مراجع، وبيعلّم «اتعدّلت» و«اتنشرت».</div>' +
+    '<div><b>' + roleChip('الشيخ') + '</b>بتوصله الملفات على البوت (كل ملف برسالة)، ويختار لكل ملف المراجع من البوت أو من صفحته في الموقع.</div>' +
+    '<div><b>' + roleChip('مراجع') + '</b>مالوش صفحة في الموقع. الملف بيوصله على البوت، يضغط «📥 استلمت المراجعة»، يبعت تعديلاته، وفي الآخر «✅ تم الانتهاء».</div></div></div>';
 }
 
 // ---------- السجل ----------
@@ -860,7 +848,7 @@ function pLog() {
   return '<div class="card">' + out + '</div>';
 }
 
-// ---------- الإعدادات ----------
+// ---------- الإعدادات (المودريتور) ----------
 function projRow(p, i) {
   var wd = p.workDays || [];
   return '<div class="prow" data-old="' + esc(p.old !== undefined ? p.old : p.name) + '">' +
@@ -889,7 +877,11 @@ function pSettings() {
     '<dt>المحاضرات</dt><dd>' + n(D.lectures.length) + '</dd><dt>الفريق</dt><dd>' + n(D.team.length) + ' عضو</dd></dl></div>';
 }
 
+
 // ================= الأحداث =================
+function done_(a, msg) { return function () { busy(a, false); if (msg) toast(msg); closeAll(); render(); }; }
+function fail_(a) { return function (er) { busy(a, false); toast(er.message, true); }; }
+
 document.addEventListener('click', function (e) {
   var a = e.target.closest('[data-act]');
   if (!a) return;
@@ -897,7 +889,91 @@ document.addEventListener('click', function (e) {
   if (a.tagName === 'A' && a.getAttribute('href') === '#') e.preventDefault();
   switch (act) {
     case 'go': go(a.dataset.k); break;
-    case 'proj': setProj(a.dataset.p); F.st = 'all'; F.rev = ''; F.q = ''; go(allowed('dash') ? 'dash' : 'send'); break;
+    case 'proj': setProj(a.dataset.p); F.st = 'all'; F.rev = ''; F.q = ''; go('dash'); break;
+    case 'menu': $('side').classList.add('open'); $('veil').classList.remove('hidden'); break;
+    case 'close': closeAll(); break;
+    case 'refresh': busy(a, true, '…'); refresh().then(function () { busy(a, false); toast('اتحدّث ✓'); }); break;
+    case 'logout':
+      if (!confirm('تخرج من الموقع على الجهاز ده؟')) return;
+      api('logout').catch(function () {}); S.session = ''; save(); dropCache(); D = null; showLogin(); break;
+    case 'filter': F.st = a.dataset.st; F.rev = ''; F.q = ''; go('files'); break;
+    case 'seg': F.st = a.dataset.st; render(); break;
+    case 'shp': SHP = a.dataset.p; render(); break;
+    case 'lec': openLecture(a.dataset.id); break;
+    case 'copy':
+      try { navigator.clipboard.writeText(a.dataset.text); toast('اتنسخ ✓'); } catch (er) { toast(a.dataset.text); }
+      break;
+
+    // --- المودريتور: رفع وإرسال للشيخ ---
+    case 'add-item': { var it = readItems(); it.push(blank()); drawItems(it); saveDraft(); break; }
+    case 'rm-item': { var its = readItems(); its.splice(Number(a.dataset.i), 1); drawItems(its.length ? its : [blank()]); saveDraft(); break; }
+    case 'save-files': {
+      var items = readItems().filter(function (x) { return x.title.trim() || x.link.trim(); });
+      if (!items.length) { toast('اكتب ملف واحد على الأقل', true); return; }
+      var sendNow = !!a.dataset.send;
+      busy(a, true, '⏳ جاري الحفظ…');
+      api('addFiles', { project: upProj(), sendNow: sendNow, items: items }).then(function (res) {
+        busy(a, false);
+        var txt = '';
+        if (res.ok.length) txt += '✅ اتحفظ (' + n(res.ok.length) + '): ' + res.ok.join('، ') + (sendNow ? '\n📨 واتبعت للشيخ: ' + n(res.sent) : '');
+        if (res.bad.length) txt += (txt ? '\n\n' : '') + '⚠️ ما اتحفظش (' + n(res.bad.length) + ') — صلّحه وجرّب تاني.';
+        render();
+        drawItems(res.bad.length ? res.bad.map(function (b) { return { title: b.title, link: b.link, error: b.error }; }) : [blank(), blank(), blank(), blank()]);
+        saveDraft();
+        $('upResult').innerHTML = '<div class="result ' + (res.bad.length ? 'bad' : 'ok') + '">' + esc(txt) + '</div>';
+      }).catch(fail_(a));
+      break;
+    }
+    case 'send-new': {
+      if (!confirm('أبعت كل الملفات الجديدة للشيخ؟ كل ملف هيروح في رسالة لوحده.')) return;
+      busy(a, true);
+      api('sendToSheikh', {}).then(function (r) { busy(a, false); toast('📨 اتبعت للشيخ: ' + n(r.sent) + ' ملف'); render(); }).catch(fail_(a));
+      break;
+    }
+    case 'send-one': busy(a, true); api('sendToSheikh', { ids: [Number(a.dataset.id)] }).then(done_(a, '📨 اتبعت للشيخ')).catch(fail_(a)); break;
+    case 'del-file':
+      if (!confirm('تمسح الملف ده من النظام؟')) return;
+      busy(a, true); api('deleteFile', { id: Number(a.dataset.id) }).then(done_(a, 'اتمسح')).catch(fail_(a)); break;
+
+    // --- الشيخ: توزيع وتنبيه ---
+    case 'assign-rows': {
+      var rows = Array.prototype.map.call(document.querySelectorAll('.asg'), function (r) {
+        return { id: Number(r.dataset.id), reviewer: r.querySelector('[name=rev]').value, due: r.querySelector('[name=due]').value };
+      }).filter(function (x) { return x.reviewer; });
+      if (!rows.length) { toast('اختار مراجع لملف واحد على الأقل', true); return; }
+      busy(a, true, '⏳ جاري الإرسال…');
+      api('assign', { items: rows }).then(function (res) {
+        busy(a, false); render();
+        var txt = (res.ok.length ? '✅ اتبعت (' + n(res.ok.length) + '):\n' + res.ok.join('\n') : '') +
+          (res.bad.length ? (res.ok.length ? '\n\n' : '') + '⚠️ ما اتبعتش:\n' + res.bad.map(function (b) { return b.error; }).join('\n') : '');
+        if ($('asgResult')) $('asgResult').innerHTML = '<div class="result ' + (res.bad.length ? 'bad' : 'ok') + '">' + esc(txt) + '</div>';
+        toast(res.ok.length ? 'اتبعت للمراجعين ✓' : 'ما اتبعتش حاجة', !res.ok.length);
+      }).catch(fail_(a));
+      break;
+    }
+    case 'assign-one': {
+      var rv = $('dRev').value;
+      if (!rv) { toast('اختار المراجع', true); return; }
+      busy(a, true);
+      api('assign', { items: [{ id: Number(a.dataset.id), reviewer: rv, due: $('dDue').value }] }).then(function (res) {
+        if (res.bad.length) { busy(a, false); toast(res.bad[0].error, true); return; }
+        done_(a, '✅ اتبعت لـ ' + rv)();
+      }).catch(fail_(a));
+      break;
+    }
+    case 'nudge': busy(a, true); api('nudge', { id: Number(a.dataset.id) }).then(function (name) { busy(a, false); toast('🔔 اتبعت تنبيه لـ ' + name); }).catch(fail_(a)); break;
+
+    // --- المودريتور: الحالة والملاحظات ---
+    case 'setst': busy(a, true); api('setStatus', { id: Number(a.dataset.id), status: $('stSel').value }).then(done_(a, 'اتغيّرت الحالة ✓')).catch(fail_(a)); break;
+    case 'note': {
+      var nid = a.dataset.id, ta = $('note-' + nid), text = ta ? ta.value.trim() : '';
+      if (!text) { toast('اكتب الملاحظة الأول', true); return; }
+      busy(a, true);
+      api('addNote', { id: Number(nid), text: text }).then(function () { toast('اتضافت الملاحظة ✓'); render(); openLecture(nid); }).catch(fail_(a));
+      break;
+    }
+
+    // --- الفريق والإعدادات ---
     case 'mem-proj': {
       var mem = D.team.filter(function (x) { return x.chat === a.dataset.chat; })[0];
       var list = (mem.projects || []).slice(), pi = list.indexOf(a.dataset.p);
@@ -909,87 +985,20 @@ document.addEventListener('click', function (e) {
     }
     case 'add-proj': $('projRows').insertAdjacentHTML('beforeend', projRow({ name: '', old: '', item: 'محاضرة', color: '#5a6b78', workDays: [], active: true })); break;
     case 'save-projects': {
-      var rows = Array.prototype.map.call(document.querySelectorAll('#projRows .prow'), function (r) {
+      var prs = Array.prototype.map.call(document.querySelectorAll('#projRows .prow'), function (r) {
         return { old: r.dataset.old, name: r.querySelector('[name=pname]').value.trim(), item: r.querySelector('[name=pitem]').value.trim(),
           color: r.querySelector('[name=pcolor]').value, active: r.querySelector('[name=pact]').checked,
           workDays: Array.prototype.filter.call(r.querySelectorAll('[name=pwd]'), function (c) { return c.checked; }).map(function (c) { return Number(c.value); }) };
       }).filter(function (r) { return r.name || r.old; });
       busy(a, true);
-      api('saveProjects', { projects: rows }).then(function () { busy(a, false); toast('اتحفظت المشاريع ✓'); render(); })
-        .catch(function (er) { busy(a, false); toast(er.message, true); });
-      break;
-    }
-    case 'menu': $('side').classList.add('open'); $('veil').classList.remove('hidden'); break;
-    case 'close': closeAll(); break;
-    case 'refresh': busy(a, true, '…'); refresh().then(function () { busy(a, false); toast('اتحدّث ✓'); }); break;
-    case 'logout':
-      if (!confirm('تخرج من الموقع على الجهاز ده؟')) return;
-      api('logout').catch(function () {}); S.session = ''; save(); dropCache(); D = null; showLogin(); break;
-    case 'filter': F.st = a.dataset.st; F.rev = ''; F.q = ''; go('lectures'); break;
-    case 'seg': F.st = a.dataset.st; render(); break;
-    case 'rev-lecs': F.rev = a.dataset.name; F.st = 'all'; F.q = ''; go('lectures'); break;
-    case 'lec': openLecture(a.dataset.id); break;
-    case 'copy':
-      try { navigator.clipboard.writeText(a.dataset.text); toast('اتنسخ ✓'); } catch (er) { toast(a.dataset.text); }
-      break;
-    case 'note': {
-      var id = a.dataset.id, ta = $('note-' + id), text = ta ? ta.value.trim() : '';
-      if (!text) { toast('اكتب الملاحظة الأول', true); return; }
-      busy(a, true);
-      api('addNote', { id: Number(id), text: text }).then(function () {
-        toast('اتضافت الملاحظة ووصلت للمدراء ✓');
-        render();
-        if ($('drawer').dataset.id) openLecture(id);
-      })
-        .catch(function (er) { busy(a, false); toast(er.message, true); });
-      break;
-    }
-    case 'done': {
-      if (!confirm('تأكيد تسليم المراجعة؟')) return;
-      busy(a, true);
-      api('markDone', { id: Number(a.dataset.id) }).then(function () {
-        toast('اتسجّل التسليم ✓ — جزاك الله خيرًا'); closeAll(); render();
-      }).catch(function (er) { busy(a, false); toast(er.message, true); });
-      break;
-    }
-    case 'setst': {
-      busy(a, true);
-      api('setStatus', { id: Number(a.dataset.id), status: $('stSel').value }).then(function () {
-        toast('اتغيّرت الحالة ✓'); closeAll(); render();
-      }).catch(function (er) { busy(a, false); toast(er.message, true); });
-      break;
-    }
-    case 'add-item': { var it = readItems(); it.push(blank()); drawItems(it); saveDraft(); break; }
-    case 'rm-item': { var its = readItems(); its.splice(Number(a.dataset.i), 1); drawItems(its.length ? its : [blank()]); saveDraft(); break; }
-    case 'send': {
-      var items = readItems().filter(function (x) { return x.title.trim() || x.link.trim(); });
-      if (!items.length) { toast('اكتب عنصر واحد على الأقل', true); return; }
-      busy(a, true, '⏳ جاري الإرسال…');
-      api('send', { project: sendProj(), items: items }).then(function (res) {
-        busy(a, false);
-        var txt = '';
-        if (res.ok.length) txt += '✅ اتبعت (' + n(res.ok.length) + '):\n' + res.ok.join('\n');
-        if (res.bad.length) txt += (txt ? '\n\n' : '') + '⚠️ ما اتبعتش (' + n(res.bad.length) + ') — صلّحها وابعت تاني.';
-        drawItems(res.bad.length ? res.bad.map(function (b) { return { title: b.title, link: b.link, reviewer: b.reviewer, due: b.due || projOf(sendProj()).defaultDue, error: b.error }; }) : [blank(), blank(), blank(), blank()]);
-        saveDraft();
-        $('sendResult').innerHTML = '<div class="result ' + (res.bad.length ? 'bad' : 'ok') + '">' + esc(txt) + '</div>';
-      }).catch(function (er) { busy(a, false); toast(er.message, true); });
-      break;
-    }
-    case 'save-perms': {
-      var m = { manager: {}, reviewer: {} };
-      document.querySelectorAll('[data-perm]').forEach(function (c) { m[c.dataset.perm][c.dataset.key] = c.checked; });
-      busy(a, true);
-      api('setPermissions', { matrix: m }).then(function () { busy(a, false); toast('اتحفظت الصلاحيات ✓'); render(); })
-        .catch(function (er) { busy(a, false); toast(er.message, true); });
+      api('saveProjects', { projects: prs }).then(function () { busy(a, false); toast('اتحفظت المشاريع ✓'); render(); }).catch(fail_(a));
       break;
     }
     case 'save-settings': {
       var wd = Array.prototype.filter.call(document.querySelectorAll('[name=wd]'), function (c) { return c.checked; }).map(function (c) { return Number(c.value); });
       busy(a, true);
       api('saveSettings', { workDays: wd, hour: Number($('hour').value), adminHour: Number($('adminHour').value) })
-        .then(function () { busy(a, false); toast('اتحفظت الإعدادات ✓'); render(); })
-        .catch(function (er) { busy(a, false); toast(er.message, true); });
+        .then(function () { busy(a, false); toast('اتحفظت الإعدادات ✓'); render(); }).catch(fail_(a));
       break;
     }
   }
@@ -997,27 +1006,18 @@ document.addEventListener('click', function (e) {
 
 document.addEventListener('input', function (e) {
   if (e.target.id === 'q') { F.q = e.target.value; drawRows(); }
-  if (e.target.closest && e.target.closest('#items')) {
-    if (e.target.name === 'due') e.target.nextElementSibling.textContent = e.target.value ? arDate(e.target.value) : '';
-    saveDraft();
-  }
+  if (e.target.closest && e.target.closest('#items')) saveDraft();
 });
 
 document.addEventListener('change', function (e) {
   var t = e.target;
   if (t.id === 'revFilter') { F.rev = t.value; drawRows(); return; }
-  if (t.id === 'sendProj') {          // تغيير المشروع: المواعيد اللي على الافتراضي القديم تتغيّر للجديد
-    var oldDue = projOf(PROJ || (projs()[0] || {}).name).defaultDue, P = projOf(t.value);
-    setProj(t.value);
-    $('sendDue').textContent = arDate(P.defaultDue);
-    drawItems(readItems().map(function (it) { if (!it.due || it.due === oldDue) it.due = P.defaultDue; return it; }));
-    saveDraft(); render(); return;
-  }
+  if (t.id === 'upProj') { setProj(t.value); return; }
+  if (t.id === 'asgAll') { document.querySelectorAll('.asg [name=rev]').forEach(function (s) { s.value = t.value; }); return; }
   if (t.closest && t.closest('#items')) { saveDraft(); return; }
   if (t.dataset && t.dataset.mem) {
     var args = { chat: t.dataset.chat };
-    var f = t.dataset.mem;
-    args[f] = t.type === 'checkbox' ? t.checked : t.value;
+    args[t.dataset.mem] = t.type === 'checkbox' ? t.checked : t.value;
     t.disabled = true;
     api('updateMember', args).then(function () { toast('اتحفظ ✓'); render(); })
       .catch(function (er) { toast(er.message, true); render(); });
@@ -1062,7 +1062,7 @@ function init() {
   if (S.api && S.session) {
     showApp();
     var c = loadCache();
-    if (c) { D = c; if (!PAGE || !allowed(PAGE)) PAGE = (D.me.isOwner || D.me.perms.view_all) ? 'home' : 'mine'; render(); refresh(true); }   // عرض فوري لآخر بيانات، والتحديث في الخلفية
+    if (c) { D = c; if (!PAGE || !allowed(PAGE)) PAGE = defaultPage(D); render(); refresh(true); }   // عرض فوري لآخر بيانات، والتحديث في الخلفية
     else refresh();
   } else showLogin();
 }
