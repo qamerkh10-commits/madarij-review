@@ -910,7 +910,7 @@ function onStart_(m, payload) {
   }
   const full = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ').trim() || ('عضو ' + chat);
   const name = uniqueName_(full);
-  sheet_(SH.TEAM).appendRow([name, chat, m.from.username ? '@' + m.from.username : '', nowDate_(), ROLE.REVIEWER, true, false]);
+  teamAppend_([name, chat, m.from.username ? '@' + m.from.username : '', nowDate_(), ROLE.REVIEWER, true, false]);
   fresh_();
   log_(name, 'انضم للفريق', '');
   send_(chat, 'أهلًا ' + esc_(name) + ' 👋\nاتسجّلت في نظام المراجعة ✅\n' +
@@ -937,7 +937,7 @@ function onAdmin_(m, text) {
   let team = readTeam_();
   if (!team.some(x => x.chat === chat)) {
     const full = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ').trim() || 'المالك';
-    sh.appendRow([uniqueName_(full), chat, m.from.username ? '@' + m.from.username : '', nowDate_(), ROLE.OWNER, true, true]);
+    teamAppend_([uniqueName_(full), chat, m.from.username ? '@' + m.from.username : '', nowDate_(), ROLE.OWNER, true, true]);
     fresh_();
     team = readTeam_();
   }
@@ -1289,12 +1289,21 @@ function ensureSheets_() {
   styleHeader_(team, T_HEADERS.length);
   team.getRange('B:B').setNumberFormat('@');
   team.getRange(2, T.JOINED, rows).setNumberFormat('yyyy/mm/dd');
-  const tn = team.getLastRow() - 1;
-  if (tn > 0) { const rr = team.getRange(2, T.ROLE, tn, 1); rr.setValues(rr.getValues().map(r => [normRole_(r[0])])); }
-  team.getRange(2, T.ROLE, rows).setDataValidation(SpreadsheetApp.newDataValidation()
-    .requireValueInList([ROLE.OWNER, ROLE.MANAGER, ROLE.REVIEWER], true).setAllowInvalid(false).build());
+  // التحقق على العمود كله (الصفوف اللي بتنزل بعدين بتاخد نفس القايمة)، وبعدين تحويل الأسماء القديمة
+  const allRows = Math.max(team.getMaxRows() - 1, rows);
+  team.getRange(2, T.ROLE, allRows).setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInList([ROLE.OWNER, ROLE.MANAGER, ROLE.REVIEWER], true).setAllowInvalid(true).build());
   // مربعات اختيار من غير ما تمسح القيم الموجودة (insertCheckboxes بيصفّرها)
-  team.getRange(2, T.ACTIVE, rows, 2).setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
+  team.getRange(2, T.ACTIVE, allRows, 2).setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
+  const tn = team.getLastRow() - 1;
+  if (tn > 0) {
+    const vals = team.getRange(2, 1, tn, T.ROLE).getValues();
+    vals.forEach((r, i) => {
+      if (!String(r[0]).trim()) return;                       // صف فاضي
+      const nr = normRole_(r[T.ROLE - 1]);
+      if (nr !== String(r[T.ROLE - 1]).trim()) team.getRange(i + 2, T.ROLE).setValue(nr);
+    });
+  }
   [170, 130, 150, 120, 90, 70, 110].forEach((w, i) => team.setColumnWidth(i + 1, w));
 
   let lec = book.getSheetByName(SH.LECT);
@@ -1480,6 +1489,15 @@ function readTeamRaw_() {
     active: r[5] === '' || bool(r[5]), notify: bool(r[6]),
     projects: String(r[7] || '').split(/[،,]/).map(x => x.trim()).filter(Boolean),
   })).filter(m => m.name && m.chat);
+}
+
+/** يكتب العضو الجديد بعد آخر اسم موجود (appendRow بيعدّي الصفوف اللي فيها مربعات اختيار فاضية) */
+function teamAppend_(row) {
+  const s = sheet_(SH.TEAM);
+  const n = s.getLastRow();
+  let last = 1;
+  if (n > 1) s.getRange(2, 1, n - 1, 1).getValues().forEach((r, i) => { if (String(r[0]).trim()) last = i + 2; });
+  s.getRange(last + 1, 1, 1, row.length).setValues([row]);
 }
 
 /** كل الأعضاء النشطين (أي حد نشط ينفع يتوزّع عليه مراجعة) */
